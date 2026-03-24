@@ -1,0 +1,230 @@
+{% extends "tool_base.html" %}
+{% block tool_content %}
+<div class="tt-container">
+  <!-- ── Inputs Panel ──────────────────────────────────────────── -->
+  <div class="tt-panel">
+    <h2 class="tt-panel__title">Parameters</h2>
+
+    <!-- Token Space Size (N) -->
+    <div class="tt-field">
+      <label class="tt-field__label" for="tt-space">Token Space Size (N)</label>
+      <input id="tt-space" class="tt-field__input" type="text" value="1000000" inputmode="numeric">
+      <div class="tt-presets" data-target="tt-space">
+        <button class="tt-preset-btn" data-value="10000">10⁴ (4-digit OTP)</button>
+        <button class="tt-preset-btn" data-value="1000000">10⁶ (6-digit OTP)</button>
+        <button class="tt-preset-btn" data-value="4294967296">2³² (32-bit)</button>
+        <button class="tt-preset-btn" data-value="18446744073709551616">2⁶⁴ (64-bit)</button>
+        <button class="tt-preset-btn" data-value="340282366920938463463374607431768211456">2¹²⁸ (128-bit)</button>
+      </div>
+    </div>
+
+    <!-- Valid Tokens (T) -->
+    <div class="tt-field">
+      <label class="tt-field__label" for="tt-valid">Valid Tokens (T)</label>
+      <input id="tt-valid" class="tt-field__input" type="text" value="1" inputmode="numeric">
+    </div>
+
+    <!-- Guesses/Second -->
+    <div class="tt-field">
+      <label class="tt-field__label" for="tt-rate">Guesses / Second</label>
+      <input id="tt-rate" class="tt-field__input" type="text" value="1000" inputmode="numeric">
+      <div class="tt-presets" data-target="tt-rate">
+        <button class="tt-preset-btn" data-value="1">1 (rate-limited)</button>
+        <button class="tt-preset-btn" data-value="100">100</button>
+        <button class="tt-preset-btn" data-value="10000">10K</button>
+        <button class="tt-preset-btn" data-value="1000000">1M</button>
+        <button class="tt-preset-btn" data-value="1000000000">1B</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Results Panel ─────────────────────────────────────────── -->
+  <div class="tt-panel">
+    <h2 class="tt-panel__title">Results</h2>
+    <div id="tt-results">
+      <div class="tt-result-main">
+        <div id="tt-time" class="tt-result-time">—</div>
+        <div id="tt-risk-badge" class="tt-risk-badge" style="display:none;">—</div>
+      </div>
+      <div id="tt-stats" class="tt-stats"></div>
+      <div id="tt-interpretation" class="tt-interpretation" style="display:none;"></div>
+      <div id="tt-error" class="tt-error" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  const elSpace = document.getElementById("tt-space");
+  const elValid = document.getElementById("tt-valid");
+  const elRate  = document.getElementById("tt-rate");
+
+  const elTime           = document.getElementById("tt-time");
+  const elRiskBadge      = document.getElementById("tt-risk-badge");
+  const elStats          = document.getElementById("tt-stats");
+  const elInterpretation = document.getElementById("tt-interpretation");
+  const elError          = document.getElementById("tt-error");
+
+  function parseNum(str) {
+    if (!str) return NaN;
+    str = str.trim().replace(/,/g, "").replace(/\s/g, "");
+    return parseFloat(str);
+  }
+
+  /* ── Time formatting ───────────────────────────────────────────── */
+
+  function formatTime(seconds) {
+    if (!isFinite(seconds) || seconds < 0) return "∞ (heat death of universe)";
+
+    const units = [
+      { label: "year",   secs: 365.25 * 86400 },
+      { label: "day",    secs: 86400 },
+      { label: "hour",   secs: 3600 },
+      { label: "minute", secs: 60 },
+      { label: "second", secs: 1 },
+    ];
+
+    const years = seconds / (365.25 * 86400);
+    if (years >= 1e12) return years.toExponential(2) + " years";
+
+    for (const u of units) {
+      const count = seconds / u.secs;
+      if (count >= 1) {
+        const display = count >= 100 ? Math.round(count) : count.toFixed(1).replace(/\.0$/, "");
+        return `${display} ${u.label}${count >= 2 ? "s" : ""}`;
+      }
+    }
+    return seconds.toFixed(3) + " seconds";
+  }
+
+  function formatNumber(n) {
+    if (!isFinite(n)) return "∞";
+    if (n >= 1e15) return n.toExponential(3);
+    if (n >= 1) return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+    if (n >= 0.0001) return n.toFixed(6);
+    return n.toExponential(3);
+  }
+
+  /* ── Risk assessment ───────────────────────────────────────────── */
+
+  function riskLevel(seconds) {
+    if (seconds < 3600)        return { label: "CRITICAL", cls: "tt-risk-badge--critical" };
+    if (seconds < 86400)       return { label: "HIGH",     cls: "tt-risk-badge--high" };
+    if (seconds < 86400 * 30)  return { label: "MEDIUM",   cls: "tt-risk-badge--medium" };
+    return                            { label: "LOW",      cls: "tt-risk-badge--low" };
+  }
+
+  /* ── Core math ─────────────────────────────────────────────────
+     With-replacement approximation: P(fail) per guess = (1 - T/N)
+     k guesses for target probability P:  k = log(1-P) / log(1 - T/N)
+     ────────────────────────────────────────────────────────────── */
+
+  function calculate() {
+    const N = parseNum(elSpace.value);
+    const T = parseNum(elValid.value);
+    const G = parseNum(elRate.value);
+
+    elError.style.display = "none";
+    elRiskBadge.style.display = "none";
+    elInterpretation.style.display = "none";
+    elStats.innerHTML = "";
+
+    if (isNaN(N) || isNaN(T) || isNaN(G)) { showError("Enter valid numbers for all fields."); return; }
+    if (N <= 0) { showError("Token space (N) must be greater than 0."); return; }
+    if (T <= 0) { showError("Valid tokens (T) must be at least 1."); return; }
+    if (T > N)  { showError("Valid tokens (T) cannot exceed token space (N)."); return; }
+    if (G <= 0) { showError("Guesses/second must be greater than 0."); return; }
+
+    const ratio = T / N;
+    const logMiss = Math.log(1 - ratio);
+
+    const k50 = Math.log(0.5) / logMiss;
+    const time50 = k50 / G;
+
+    const k01 = Math.log(0.99) / logMiss;
+    const time01 = k01 / G;
+
+    // Render
+    elTime.textContent = formatTime(time50);
+
+    const risk = riskLevel(time50);
+    elRiskBadge.textContent = risk.label;
+    elRiskBadge.className = "tt-risk-badge " + risk.cls;
+    elRiskBadge.style.display = "inline-block";
+
+    elStats.innerHTML = [
+      { label: "Guesses for 50% success", value: formatNumber(k50) },
+      { label: "Time for 1% success",     value: formatTime(time01) },
+      { label: "Guesses for 1% success",  value: formatNumber(k01) },
+      { label: "P(single guess)",          value: formatNumber(ratio) },
+    ].map(s =>
+      `<div class="tt-stat">
+        <span class="tt-stat__label">${s.label}</span>
+        <span class="tt-stat__value">${s.value}</span>
+      </div>`
+    ).join("");
+
+    const rateLabel = G >= 1e9 ? formatNumber(G) :
+                      G >= 1e6 ? (G / 1e6).toFixed(0) + "M" :
+                      G >= 1e3 ? (G / 1e3).toFixed(0) + "K" :
+                      G.toString();
+
+    elInterpretation.innerHTML =
+      `An attacker making <strong>${rateLabel} guesses/sec</strong> against a space of ` +
+      `<strong>${formatNumber(N)}</strong> possible tokens with <strong>${formatNumber(T)}</strong> ` +
+      `active token${T > 1 ? "s" : ""} would have a 50% chance of success in approximately ` +
+      `<strong>${formatTime(time50)}</strong>. This represents a <strong>${risk.label}</strong> risk.`;
+    elInterpretation.style.display = "block";
+  }
+
+  function showError(msg) {
+    elTime.textContent = "—";
+    elRiskBadge.style.display = "none";
+    elStats.innerHTML = "";
+    elInterpretation.style.display = "none";
+    elError.textContent = msg;
+    elError.style.display = "block";
+  }
+
+  /* ── Preset buttons ────────────────────────────────────────────── */
+
+  document.querySelectorAll(".tt-presets").forEach(group => {
+    const targetId = group.dataset.target;
+    const input = document.getElementById(targetId);
+    if (!input) return;
+
+    group.querySelectorAll(".tt-preset-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        input.value = btn.dataset.value;
+        group.querySelectorAll(".tt-preset-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        input.dispatchEvent(new Event("input"));
+      });
+    });
+
+    input.addEventListener("input", () => {
+      const currentVal = input.value.trim();
+      group.querySelectorAll(".tt-preset-btn").forEach(b => {
+        b.classList.toggle("active", b.dataset.value === currentVal);
+      });
+    });
+  });
+
+  /* ── Live recalculation ────────────────────────────────────────── */
+
+  let calcTimer = null;
+  function scheduleCalc() {
+    clearTimeout(calcTimer);
+    calcTimer = setTimeout(calculate, 100);
+  }
+
+  [elSpace, elValid, elRate].forEach(el => {
+    el.addEventListener("input", scheduleCalc);
+  });
+
+  calculate();
+})();
+</script>
+{% endblock %}

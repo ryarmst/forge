@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}404 — Forge{% endblock %}
+
+{% block content %}
+<div class="error-page">
+  <div class="error-page__code">404</div>
+  <p class="error-page__msg">{{ error or "This page doesn't exist. Maybe it was never forged." }}</p>
+  <a href="/" class="error-page__link">← Back to Dashboard</a>
+</div>
+{% endblock %}

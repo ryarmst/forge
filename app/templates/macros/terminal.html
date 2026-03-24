@@ -1,0 +1,16 @@
+{#
+  Reusable terminal-output macro for server-backed tools using SSE streaming.
+
+  Usage in a tool template:
+    {% from "macros/terminal.html" import terminal_output %}
+    {{ terminal_output(id="my-output") }}
+
+  Then in JS:
+    streamToTerminal('/tools/my_tool/api/run?...', document.getElementById('my-output'));
+#}
+
+{% macro terminal_output(id="terminal-output", placeholder="Waiting for output...") %}
+<div id="{{ id }}" class="terminal-output" aria-live="polite">
+  <span style="color: var(--text-muted);">{{ placeholder }}</span>
+</div>
+{% endmacro %}

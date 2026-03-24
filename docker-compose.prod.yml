@@ -1,0 +1,14 @@
+# Production compose — pulls pre-built image from GHCR.
+# Used on the VPS. Replace <OWNER> with your GitHub username (lowercase).
+#
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+
+services:
+  forge:
+    image: ghcr.io/<OWNER>/forge:latest
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=production

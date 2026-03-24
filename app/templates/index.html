@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Forge — Security Testing, Assembled{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<section class="hero">
+  <h1 class="hero__title">Security Testing, <em>Assembled.</em></h1>
+  <p class="hero__subtitle">A modular platform for security testing tools. Search, launch, and chain your offensive toolkit.</p>
+</section>
+
+<!-- Search -->
+<div class="search">
+  <i data-lucide="search" class="search__icon" style="width:18px;height:18px;"></i>
+  <input
+    type="text"
+    id="search-input"
+    class="search__input"
+    placeholder="Search tools by name, tag, or description..."
+    autocomplete="off"
+    spellcheck="false"
+  >
+  <p id="search-count" class="search__count">{{ tools | length }} tool{{ 's' if tools | length != 1 else '' }} available</p>
+</div>
+
+<!-- Tool Grid -->
+<div id="tool-grid" class="tool-grid">
+  {% for tool in tools %}
+  <div
+    class="tool-card"
+    data-name="{{ tool.name }}"
+    data-tags="{{ tool.tags | join(',') }}"
+    data-desc="{{ tool.description }}"
+  >
+    <i data-lucide="{{ tool.icon }}" class="tool-card__icon"></i>
+    <h3 class="tool-card__name">{{ tool.name }}</h3>
+    <p class="tool-card__desc">{{ tool.description }}</p>
+    <div class="tool-card__tags">
+      {% for tag in tool.tags %}
+      <span class="tag">{{ tag }}</span>
+      {% endfor %}
+    </div>
+    <a href="/tools/{{ tool.slug }}" class="tool-card__action">Open Tool →</a>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Empty State -->
+<div id="empty-state" class="empty-state">
+  <div class="empty-state__icon">
+    <i data-lucide="ghost" style="width:48px;height:48px;"></i>
+  </div>
+  <p class="empty-state__text">No tools match your search.</p>
+</div>
+
+<!-- Pre-baked tool data for client-side extensibility -->
+<script>
+  window.__FORGE_TOOLS__ = {{ tools_json | tojson }};
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ tool.name }} — Forge{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav class="breadcrumb">
+  <a href="/">Dashboard</a>
+  <span class="breadcrumb__sep">/</span>
+  <span>{{ tool.name }}</span>
+</nav>
+
+<!-- Tool Layout: sidebar + content -->
+<div class="tool-layout">
+  <aside class="tool-sidebar">
+    <h2 class="tool-sidebar__heading">Tool Info</h2>
+
+    <div class="tool-sidebar__item">
+      <span class="tool-sidebar__label">Version</span>
+      <span class="tool-sidebar__value">{{ tool.version }}</span>
+    </div>
+
+    <div class="tool-sidebar__item">
+      <span class="tool-sidebar__label">Author</span>
+      <span class="tool-sidebar__value">{{ tool.author }}</span>
+    </div>
+
+    <div class="tool-sidebar__item">
+      <span class="tool-sidebar__label">Type</span>
+      {% if tool.has_server_logic %}
+      <span class="tool-sidebar__badge tool-sidebar__badge--server">Server</span>
+      {% else %}
+      <span class="tool-sidebar__badge tool-sidebar__badge--client">Client-side</span>
+      {% endif %}
+    </div>
+
+    <div class="tool-sidebar__item">
+      <span class="tool-sidebar__label">Tags</span>
+      <div class="tool-card__tags" style="margin-top:0.25rem;">
+        {% for tag in tool.tags %}
+        <span class="tag">{{ tag }}</span>
+        {% endfor %}
+      </div>
+    </div>
+  </aside>
+
+  <div class="tool-content">
+    {% block tool_content %}{% endblock %}
+
+    <a href="/" class="back-link">← Back to Dashboard</a>
+  </div>
+</div>
+{% endblock %}

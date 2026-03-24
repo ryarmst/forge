@@ -1,0 +1,705 @@
+/* ========================================================================
+   Forge — Global Stylesheet
+   Dark terminal-meets-modern-UI aesthetic with cyan/amber accents.
+   ======================================================================== */
+
+/* --- Reset & Base ---------------------------------------------------- */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-mono);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: var(--text);
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* --- Scrollbar (webkit) --------------------------------------------- */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* --- Navigation ----------------------------------------------------- */
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  height: 60px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav__logo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.nav__logo span {
+  color: var(--text);
+}
+
+.nav__links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  list-style: none;
+}
+
+.nav__links a {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  transition: color 0.15s ease;
+}
+
+.nav__links a:hover {
+  color: var(--text);
+}
+
+/* --- Layout --------------------------------------------------------- */
+
+.container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.main {
+  flex: 1;
+  padding: 2.5rem 0;
+}
+
+/* --- Hero ----------------------------------------------------------- */
+
+.hero {
+  text-align: center;
+  padding: 3rem 0 2.5rem;
+}
+
+.hero__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  color: var(--text);
+  line-height: 1.15;
+  margin-bottom: 0.75rem;
+}
+
+.hero__title em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.hero__subtitle {
+  color: var(--text-muted);
+  font-size: 1rem;
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+/* --- Search --------------------------------------------------------- */
+
+.search {
+  max-width: 720px;
+  margin: 0 auto 2rem;
+  position: relative;
+}
+
+.search__input {
+  width: 100%;
+  padding: 0.9rem 1.25rem 0.9rem 3rem;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.search__input::placeholder {
+  color: var(--text-muted);
+}
+
+.search__input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.search__icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.search__count {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 0.75rem;
+}
+
+/* --- Tool Grid ------------------------------------------------------ */
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+/* --- Tool Card ------------------------------------------------------ */
+
+.tool-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tool-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.tool-card__icon {
+  color: var(--accent);
+  width: 32px;
+  height: 32px;
+}
+
+.tool-card__name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.tool-card__desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.tool-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  background: var(--surface-2);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.tool-card__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-top: 0.25rem;
+  transition: gap 0.15s ease;
+}
+
+.tool-card__action:hover {
+  gap: 0.6rem;
+  color: var(--text);
+}
+
+/* --- Empty State ---------------------------------------------------- */
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: var(--text-muted);
+  display: none;
+}
+
+.empty-state.visible {
+  display: block;
+}
+
+.empty-state__icon {
+  margin-bottom: 1rem;
+  opacity: 0.4;
+}
+
+.empty-state__text {
+  font-size: 1rem;
+}
+
+/* --- Tool Page Layout ----------------------------------------------- */
+
+.tool-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.tool-sidebar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  position: sticky;
+  top: 80px;
+}
+
+.tool-sidebar__heading {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 1rem;
+}
+
+.tool-sidebar__item {
+  margin-bottom: 0.85rem;
+}
+
+.tool-sidebar__label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.15rem;
+}
+
+.tool-sidebar__value {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.tool-sidebar__badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.tool-sidebar__badge--server {
+  background: rgba(0, 212, 170, 0.15);
+  color: var(--accent);
+}
+
+.tool-sidebar__badge--client {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--accent-warm);
+}
+
+.tool-content {
+  min-width: 0;
+}
+
+/* --- Breadcrumb ----------------------------------------------------- */
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+
+.breadcrumb a {
+  color: var(--text-muted);
+}
+
+.breadcrumb a:hover {
+  color: var(--accent);
+}
+
+.breadcrumb__sep {
+  color: var(--border);
+}
+
+/* --- Back link ------------------------------------------------------ */
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 2rem;
+  transition: color 0.15s ease;
+}
+
+.back-link:hover {
+  color: var(--accent);
+}
+
+/* --- Footer --------------------------------------------------------- */
+
+.footer {
+  padding: 1.5rem 2rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+
+.footer span {
+  opacity: 0.5;
+}
+
+/* --- Terminal Output (reusable component for SSE tools) ------------- */
+
+.terminal-output {
+  background: #0a0c0f;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: #a1b0c8;
+  line-height: 1.7;
+  max-height: 500px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.terminal-output .line-error {
+  color: var(--danger);
+}
+
+.terminal-output .line-info {
+  color: var(--accent);
+}
+
+/* --- Utility Classes ------------------------------------------------ */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+/* --- 404 Page ------------------------------------------------------- */
+
+.error-page {
+  text-align: center;
+  padding: 6rem 1rem;
+}
+
+.error-page__code {
+  font-family: var(--font-display);
+  font-size: 6rem;
+  font-weight: 700;
+  color: var(--border);
+  line-height: 1;
+}
+
+.error-page__msg {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+}
+
+.error-page__link {
+  display: inline-block;
+  margin-top: 2rem;
+  padding: 0.6rem 1.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: var(--accent);
+  font-size: 0.85rem;
+  transition: background 0.15s ease;
+}
+
+.error-page__link:hover {
+  background: rgba(0, 212, 170, 0.1);
+  color: var(--accent);
+}
+
+/* ====================================================================
+   Token Timer — tool-specific styles
+   ==================================================================== */
+
+.tt-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.tt-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem;
+}
+
+.tt-panel__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 1.25rem;
+  color: var(--text);
+}
+
+.tt-field {
+  margin-bottom: 1.25rem;
+}
+
+.tt-field:last-child {
+  margin-bottom: 0;
+}
+
+.tt-field__label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+}
+
+.tt-field__input {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.tt-field__input:focus {
+  border-color: var(--accent);
+}
+
+.tt-field__input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tt-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.tt-preset-btn {
+  padding: 0.25rem 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tt-preset-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tt-preset-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(0, 212, 170, 0.1);
+}
+
+/* Results side */
+
+.tt-result-main {
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.tt-result-time {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.6rem, 4vw, 2.5rem);
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+}
+
+.tt-risk-badge {
+  display: inline-block;
+  padding: 0.3rem 0.85rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tt-risk-badge--critical { background: rgba(239,68,68,0.15); color: #ef4444; }
+.tt-risk-badge--high     { background: rgba(245,158,11,0.15); color: #f59e0b; }
+.tt-risk-badge--medium   { background: rgba(59,130,246,0.15); color: #3b82f6; }
+.tt-risk-badge--low      { background: rgba(34,197,94,0.15); color: #22c55e; }
+
+.tt-stats {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.tt-stat {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.tt-stat__label {
+  color: var(--text-muted);
+}
+
+.tt-stat__value {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.tt-interpretation {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: var(--bg);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.tt-interpretation strong {
+  color: var(--text);
+}
+
+.tt-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+/* --- Responsive ----------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .tool-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-sidebar {
+    position: static;
+    order: 1;
+  }
+
+  .tool-content {
+    order: 0;
+  }
+
+  .tt-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .nav {
+    padding: 0 1rem;
+  }
+
+  .container {
+    padding: 0 1rem;
+  }
+
+  .hero {
+    padding: 2rem 0 1.5rem;
+  }
+
+  .tool-grid {
+    grid-template-columns: 1fr;
+  }
+}
