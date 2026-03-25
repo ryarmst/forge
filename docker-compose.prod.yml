@@ -1,14 +1,27 @@
-# Production compose — pulls pre-built image from GHCR.
-# Used on the VPS. Replace <OWNER> with your GitHub username (lowercase).
-#
-#   docker compose -f docker-compose.prod.yml pull
-#   docker compose -f docker-compose.prod.yml up -d
+# Production compose — Caddy (mTLS on 443) + Forge app.
+# Certs are mounted from the host at ~/forge/certs/.
 
 services:
-  forge:
-    image: ghcr.io/<OWNER>/forge:latest
+  caddy:
+    image: caddy:2-alpine
     ports:
-      - "5000:5000"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/etc/caddy/certs:ro
+      - caddy_data:/data
+    depends_on:
+      - forge
+    restart: unless-stopped
+
+  forge:
+    image: ghcr.io/ryarmst/forge:latest
+    expose:
+      - "5000"
     restart: unless-stopped
     environment:
       - FLASK_ENV=production
+
+volumes:
+  caddy_data:

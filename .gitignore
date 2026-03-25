@@ -7,3 +7,10 @@ dist/
 build/
 .venv/
 venv/
+
+# mTLS certs — never commit private keys
+deploy/mtls/ca/
+deploy/mtls/server/
+deploy/mtls/clients/
+*.key
+*.p12

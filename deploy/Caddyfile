@@ -1,0 +1,12 @@
+westminsteroffensive.ca {
+	tls {
+		client_auth {
+			mode require_and_verify
+			trust_pool file {
+				pem_file /etc/caddy/certs/ca.crt
+			}
+		}
+	}
+
+	reverse_proxy forge:5000
+}
