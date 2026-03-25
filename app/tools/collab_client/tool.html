@@ -6,11 +6,10 @@
 .cc-panel__title     { font-family: var(--font-display); font-weight: 600; font-size: 1rem; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
 .cc-row              { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 .cc-field            { flex: 1; min-width: 150px; }
-.cc-field--full      { flex-basis: 100%; }
 .cc-label            { display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
 .cc-input            { width: 100%; padding: 0.5rem 0.7rem; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; outline: none; transition: border-color 0.15s ease; }
 .cc-input:focus      { border-color: var(--accent); }
-.cc-input:disabled   { opacity: 0.4; }
+.cc-select           { padding: 0.5rem 0.7rem; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; outline: none; }
 .cc-btn              { padding: 0.45rem 0.9rem; font-family: var(--font-mono); font-size: 0.8rem; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: all 0.15s ease; background: var(--surface-2); color: var(--text-muted); }
 .cc-btn:hover        { border-color: var(--accent); color: var(--accent); }
 .cc-btn--accent      { border-color: var(--accent); color: var(--accent); background: rgba(0,212,170,0.08); }
@@ -18,10 +17,8 @@
 .cc-btn--danger      { border-color: var(--danger); color: var(--danger); background: transparent; }
 .cc-btn--danger:hover { background: rgba(239,68,68,0.1); }
 .cc-btn--sm          { padding: 0.25rem 0.5rem; font-size: 0.7rem; }
-.cc-btn-group        { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .cc-actions          { display: flex; gap: 0.4rem; align-items: center; }
 
-/* Sessions table */
 .cc-biid-list        { display: flex; flex-direction: column; gap: 0.5rem; }
 .cc-biid-entry       { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: border-color 0.15s ease; }
 .cc-biid-entry:hover { border-color: var(--text-muted); }
@@ -31,18 +28,14 @@
 .cc-biid-meta        { color: var(--text-muted); font-size: 0.7rem; white-space: nowrap; }
 .cc-empty            { color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
 
-/* Payloads */
 .cc-subdomain-row    { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
 .cc-subdomain-row:last-child { border-bottom: none; }
 .cc-subdomain-str    { font-family: var(--font-mono); color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cc-payload-btns     { display: flex; gap: 0.3rem; }
 
-/* Poll controls */
 .cc-poll-bar         { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .cc-poll-status      { font-size: 0.8rem; color: var(--text-muted); }
 .cc-poll-status.active { color: var(--accent); }
 
-/* Interactions log */
 .cc-log              { display: flex; flex-direction: column; gap: 0.4rem; max-height: 600px; overflow-y: auto; }
 .cc-interaction      { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
 .cc-interaction__hdr { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.75rem; cursor: pointer; font-size: 0.8rem; transition: background 0.1s ease; }
@@ -63,7 +56,6 @@
 .cc-toast            { position: fixed; bottom: 1.5rem; right: 1.5rem; padding: 0.5rem 1rem; background: var(--accent); color: var(--bg); font-size: 0.8rem; border-radius: 6px; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; z-index: 200; }
 .cc-toast.show       { opacity: 1; }
 
-/* Modal overlay for create/import */
 .cc-modal-overlay    { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 150; align-items: center; justify-content: center; }
 .cc-modal-overlay.open { display: flex; }
 .cc-modal            { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; width: 400px; max-width: 90vw; }
@@ -71,7 +63,6 @@
 .cc-modal__actions   { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
 </style>
 
-<!-- Toast -->
 <div id="cc-toast" class="cc-toast"></div>
 
 <!-- ── Config ──────────────────────────────────────────────────── -->
@@ -85,7 +76,13 @@
       </div>
       <div class="cc-field">
         <label class="cc-label" for="cc-poll-server">Poll Server <span style="opacity:0.5">(optional)</span></label>
-        <input id="cc-poll-server" class="cc-input" type="text" placeholder="defaults to server above">
+        <div style="display:flex;gap:0.4rem;">
+          <select id="cc-poll-proto" class="cc-select" style="width:auto;flex-shrink:0;">
+            <option value="https">HTTPS</option>
+            <option value="http">HTTP</option>
+          </select>
+          <input id="cc-poll-server" class="cc-input" type="text" placeholder="defaults to server above">
+        </div>
       </div>
     </div>
     <div class="cc-row" style="margin-top:0.75rem;">
@@ -96,9 +93,6 @@
       <div class="cc-field" style="max-width:160px;">
         <label class="cc-label" for="cc-poll-interval">Auto-poll Interval (s)</label>
         <input id="cc-poll-interval" class="cc-input" type="number" value="120">
-      </div>
-      <div class="cc-field" style="display:flex;align-items:flex-end;">
-        <button id="cc-save-config" class="cc-btn cc-btn--accent">Save Config</button>
       </div>
     </div>
   </div>
@@ -148,6 +142,7 @@
       <button id="cc-clear-log" class="cc-btn cc-btn--sm cc-btn--danger">Clear</button>
       <button id="cc-export-log" class="cc-btn cc-btn--sm">Export</button>
     </div>
+    <pre id="cc-poll-error" class="cc-interaction__pre" style="display:none; margin-bottom:0.75rem; color:var(--danger);"></pre>
     <div id="cc-log" class="cc-log">
       <div class="cc-empty">No interactions captured yet.</div>
     </div>
@@ -191,9 +186,6 @@
 (function() {
   "use strict";
 
-  /* ================================================================
-     Storage
-     ================================================================ */
   const SK_CONFIG       = "forge_cc_config";
   const SK_BIIDS        = "forge_cc_biids";
   const SK_INTERACTIONS = "forge_cc_interactions";
@@ -207,7 +199,6 @@
   /* ================================================================
      State
      ================================================================ */
-  let config       = loadJSON(SK_CONFIG, { server: "", poll_server: "", poll_port: 9443, poll_interval: 120 });
   let biids        = loadJSON(SK_BIIDS, {});
   let interactions = loadJSON(SK_INTERACTIONS, []);
   let seenKeys     = new Set(interactions.map(i => i._uid));
@@ -218,6 +209,7 @@
      DOM refs
      ================================================================ */
   const $server       = document.getElementById("cc-server");
+  const $pollProto    = document.getElementById("cc-poll-proto");
   const $pollServer   = document.getElementById("cc-poll-server");
   const $pollPort     = document.getElementById("cc-poll-port");
   const $pollInterval = document.getElementById("cc-poll-interval");
@@ -226,30 +218,43 @@
   const $log          = document.getElementById("cc-log");
   const $pollStatus   = document.getElementById("cc-poll-status");
   const $autoPoll     = document.getElementById("cc-auto-poll");
+  const $pollError    = document.getElementById("cc-poll-error");
 
   /* ================================================================
-     Config
+     Config — reads live from fields, auto-persists on change
      ================================================================ */
-  function loadConfigUI() {
-    $server.value       = config.server || "";
-    $pollServer.value   = config.poll_server || "";
-    $pollPort.value     = config.poll_port || 9443;
-    $pollInterval.value = config.poll_interval || 120;
+  function getConfig() {
+    return {
+      server:        $server.value.trim(),
+      poll_proto:    $pollProto.value,
+      poll_server:   $pollServer.value.trim(),
+      poll_port:     parseInt($pollPort.value) || 9443,
+      poll_interval: parseInt($pollInterval.value) || 120,
+    };
   }
-
-  document.getElementById("cc-save-config").addEventListener("click", () => {
-    config.server        = $server.value.trim();
-    config.poll_server   = $pollServer.value.trim();
-    config.poll_port     = parseInt($pollPort.value) || 9443;
-    config.poll_interval = parseInt($pollInterval.value) || 120;
-    saveJSON(SK_CONFIG, config);
-    toast("Config saved");
-    updatePollControls();
-  });
 
   function getEffectivePollServer() {
-    return config.poll_server || config.server;
+    return $pollServer.value.trim() || $server.value.trim();
   }
+
+  function persistConfig() {
+    saveJSON(SK_CONFIG, getConfig());
+    updatePollControls();
+  }
+
+  function loadConfigUI() {
+    const saved = loadJSON(SK_CONFIG, {});
+    if (saved.server)        $server.value       = saved.server;
+    if (saved.poll_proto)    $pollProto.value     = saved.poll_proto;
+    if (saved.poll_server)   $pollServer.value    = saved.poll_server;
+    if (saved.poll_port)     $pollPort.value      = saved.poll_port;
+    if (saved.poll_interval) $pollInterval.value  = saved.poll_interval;
+  }
+
+  [$server, $pollProto, $pollServer, $pollPort, $pollInterval].forEach(el => {
+    el.addEventListener("change", persistConfig);
+    el.addEventListener("input", persistConfig);
+  });
 
   /* ================================================================
      BIID Management
@@ -268,8 +273,10 @@
 
   function createSession(label, biid) {
     if (!biid) biid = generateBiid();
+    const server = $server.value.trim();
     biids[biid] = {
       label: label || "Untitled",
+      server: server,
       subdomains: [],
       created: new Date().toISOString().replace("T", " ").slice(0, 19),
     };
@@ -308,10 +315,13 @@
   }
 
   function generateSubdomain() {
-    if (!activeBiid || !config.server) return;
+    if (!activeBiid) return;
+    const session = biids[activeBiid];
+    const server = session.server || $server.value.trim();
+    if (!server) { toast("Set a server first"); return; }
     const str = generateInteractionString();
-    const sub = str + "." + config.server;
-    biids[activeBiid].subdomains.push(sub);
+    const sub = str + "." + server;
+    session.subdomains.push(sub);
     saveBiids();
     renderPayloads();
   }
@@ -322,12 +332,18 @@
   async function pollBiid(biid) {
     const server = getEffectivePollServer();
     if (!server) return { error: "No server configured" };
+    const cfg = getConfig();
 
     try {
       const resp = await fetch("/tools/collab_client/api/poll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ biid, server, port: config.poll_port }),
+        body: JSON.stringify({
+          biid,
+          server,
+          port: cfg.poll_port,
+          protocol: cfg.poll_proto,
+        }),
       });
       return await resp.json();
     } catch (err) {
@@ -338,13 +354,23 @@
   async function doPoll(biid) {
     $pollStatus.textContent = "Polling...";
     $pollStatus.classList.add("active");
+    clearPollError();
 
     const label = biids[biid] ? biids[biid].label : "Unknown";
     const result = await pollBiid(biid);
 
     if (result.error) {
-      $pollStatus.textContent = "Error: " + result.error;
+      let msg = "Error: " + result.error;
+      if (result.debug) {
+        if (result.debug.url) msg += "\nURL: " + result.debug.url;
+        if (result.debug.status) msg += "\nHTTP " + result.debug.status;
+        if (result.debug.content_type) msg += "\nContent-Type: " + result.debug.content_type;
+        if (result.debug.body_preview) msg += "\nBody: " + result.debug.body_preview;
+      }
+      $pollStatus.textContent = "";
       $pollStatus.classList.remove("active");
+      console.error("[Collaborator Poll]", msg);
+      renderPollError(msg);
       return;
     }
 
@@ -382,10 +408,11 @@
   function startAutoPoll() {
     if (polling.active) return;
     polling.active = true;
+    const interval = parseInt($pollInterval.value) || 120;
     const run = () => doPollAll();
     run();
-    polling.timer = setInterval(run, (config.poll_interval || 120) * 1000);
-    $pollStatus.textContent = "Auto-polling every " + (config.poll_interval || 120) + "s";
+    polling.timer = setInterval(run, interval * 1000);
+    $pollStatus.textContent = "Auto-polling every " + interval + "s";
     $pollStatus.classList.add("active");
   }
 
@@ -458,11 +485,12 @@
       const s = biids[biid];
       const isActive = biid === activeBiid;
       const truncId = biid.length > 24 ? biid.slice(0, 24) + "..." : biid;
+      const serverTag = s.server ? esc(s.server) : '<span style="opacity:0.4">no server</span>';
       return `<div class="cc-biid-entry${isActive ? " active" : ""}" data-biid="${esc(biid)}">
         <span class="cc-biid-label">${esc(s.label)}</span>
         <span class="cc-biid-id" title="${esc(biid)}">${esc(truncId)}</span>
+        <span class="cc-biid-meta">${serverTag}</span>
         <span class="cc-biid-meta">${s.subdomains.length} payload${s.subdomains.length !== 1 ? "s" : ""}</span>
-        <span class="cc-biid-meta">${esc(s.created)}</span>
         <div class="cc-actions" onclick="event.stopPropagation()">
           <button class="cc-btn cc-btn--sm cc-copy-biid" data-biid="${esc(biid)}" title="Copy BIID">Copy</button>
           <button class="cc-btn cc-btn--sm cc-btn--danger cc-del-biid" data-biid="${esc(biid)}" title="Delete">Del</button>
@@ -489,26 +517,22 @@
       return;
     }
 
-    btn.disabled = !config.server;
-    const subs = biids[activeBiid].subdomains;
+    const session = biids[activeBiid];
+    const hasServer = !!(session.server || $server.value.trim());
+    btn.disabled = !hasServer;
+    const subs = session.subdomains;
 
     if (!subs.length) {
       $payloadList.innerHTML = '<div class="cc-empty">No payloads yet. Click Generate Subdomain.</div>';
       return;
     }
 
-    $payloadList.innerHTML = subs.map(sub => {
-      const str = sub.split(".")[0];
-      return `<div class="cc-subdomain-row">
+    $payloadList.innerHTML = subs.map(sub =>
+      `<div class="cc-subdomain-row">
         <span class="cc-subdomain-str" title="${esc(sub)}">${esc(sub)}</span>
-        <div class="cc-payload-btns">
-          <button class="cc-btn cc-btn--sm cc-copy-payload" data-val="${esc("http://" + sub + "/")}">HTTP</button>
-          <button class="cc-btn cc-btn--sm cc-copy-payload" data-val="${esc("https://" + sub + "/")}">HTTPS</button>
-          <button class="cc-btn cc-btn--sm cc-copy-payload" data-val="${esc(sub)}">DNS</button>
-          <button class="cc-btn cc-btn--sm cc-copy-payload" data-val="${esc(str + "@" + config.server)}">SMTP</button>
-        </div>
-      </div>`;
-    }).join("");
+        <button class="cc-btn cc-btn--sm cc-btn--accent cc-copy-payload" data-val="${esc(sub)}">Copy</button>
+      </div>`
+    ).join("");
 
     $payloadList.querySelectorAll(".cc-copy-payload").forEach(el => {
       el.addEventListener("click", () => { copyText(el.dataset.val); toast("Copied"); });
@@ -548,6 +572,16 @@
         if (body) body.classList.toggle("open");
       });
     });
+  }
+
+  function renderPollError(msg) {
+    $pollError.textContent = msg;
+    $pollError.style.display = "block";
+  }
+
+  function clearPollError() {
+    $pollError.style.display = "none";
+    $pollError.textContent = "";
   }
 
   function updatePollControls() {
@@ -677,7 +711,6 @@
     toast("Exported");
   });
 
-  // Enter key support in modals
   document.getElementById("cc-new-label").addEventListener("keydown", (e) => {
     if (e.key === "Enter") document.getElementById("cc-new-confirm").click();
   });

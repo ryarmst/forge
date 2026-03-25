@@ -3,6 +3,6 @@ TOOL_MANIFEST = {
     "slug": "collab_client",
     "version": "1.0.0",
     "description": "Custom Burp Collaborator client for out-of-band interaction detection. Manages BIIDs, generates payloads, and polls for DNS/HTTP/SMTP interactions.",
-    "tags": ["collaborator", "oob", "dns", "http", "smtp", "burp", "exfiltration"],
+    "tags": ["collaborator", "burp", "exfiltration"],
     "has_server_logic": True,
 }
