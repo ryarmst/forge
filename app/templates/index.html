@@ -23,13 +23,13 @@
 <!-- Tool Grid -->
 <div id="tool-grid" class="tool-grid">
   {% for tool in tools %}
-  <div
+  <a
+    href="/tools/{{ tool.slug }}"
     class="tool-card"
     data-name="{{ tool.name }}"
     data-tags="{{ tool.tags | join(',') }}"
     data-desc="{{ tool.description }}"
   >
-    <i data-lucide="{{ tool.icon }}" class="tool-card__icon"></i>
     <h3 class="tool-card__name">{{ tool.name }}</h3>
     <p class="tool-card__desc">{{ tool.description }}</p>
     <div class="tool-card__tags">
@@ -37,8 +37,7 @@
       <span class="tag">{{ tag }}</span>
       {% endfor %}
     </div>
-    <a href="/tools/{{ tool.slug }}" class="tool-card__action">Open Tool →</a>
-  </div>
+  </a>
   {% endfor %}
 </div>
 
