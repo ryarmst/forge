@@ -8,7 +8,7 @@ app/tools/my_tool/
 └── tool.html      # UI template (required)
 ```
 
-No registration step. Drop the directory in, restart, done.
+No registration step. Drop the directory in, push, done.
 
 ## Requirements
 
@@ -23,9 +23,7 @@ Must export a `TOOL_MANIFEST` dict with **all** of these keys:
 | `version`          | str        | Semver (e.g. `"1.0.0"`)                   |
 | `description`      | str        | 1-2 sentences (used for search)           |
 | `tags`             | list[str]  | Lowercase keywords (used for search)      |
-| `author`           | str        | Who wrote it                              |
 | `has_server_logic` | bool       | `True` only if you have a `routes.py`     |
-| `icon`             | str        | Lucide icon name — browse lucide.dev      |
 
 ### tool.html
 
@@ -73,4 +71,5 @@ cp -r app/tools/_template app/tools/my_new_tool
 # Edit __init__.py — set slug to "my_new_tool", fill all fields
 # Edit tool.html — build your UI
 # Delete routes.py if client-only (and set has_server_logic: False)
+# Push to deploy
 ```

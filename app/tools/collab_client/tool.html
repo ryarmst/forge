@@ -1,0 +1,699 @@
+{% extends "tool_base.html" %}
+{% block tool_content %}
+<style>
+.cc-section          { margin-bottom: 1.5rem; }
+.cc-panel            { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+.cc-panel__title     { font-family: var(--font-display); font-weight: 600; font-size: 1rem; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+.cc-row              { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.cc-field            { flex: 1; min-width: 150px; }
+.cc-field--full      { flex-basis: 100%; }
+.cc-label            { display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
+.cc-input            { width: 100%; padding: 0.5rem 0.7rem; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; outline: none; transition: border-color 0.15s ease; }
+.cc-input:focus      { border-color: var(--accent); }
+.cc-input:disabled   { opacity: 0.4; }
+.cc-btn              { padding: 0.45rem 0.9rem; font-family: var(--font-mono); font-size: 0.8rem; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: all 0.15s ease; background: var(--surface-2); color: var(--text-muted); }
+.cc-btn:hover        { border-color: var(--accent); color: var(--accent); }
+.cc-btn--accent      { border-color: var(--accent); color: var(--accent); background: rgba(0,212,170,0.08); }
+.cc-btn--accent:hover { background: rgba(0,212,170,0.18); }
+.cc-btn--danger      { border-color: var(--danger); color: var(--danger); background: transparent; }
+.cc-btn--danger:hover { background: rgba(239,68,68,0.1); }
+.cc-btn--sm          { padding: 0.25rem 0.5rem; font-size: 0.7rem; }
+.cc-btn-group        { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.cc-actions          { display: flex; gap: 0.4rem; align-items: center; }
+
+/* Sessions table */
+.cc-biid-list        { display: flex; flex-direction: column; gap: 0.5rem; }
+.cc-biid-entry       { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: border-color 0.15s ease; }
+.cc-biid-entry:hover { border-color: var(--text-muted); }
+.cc-biid-entry.active { border-color: var(--accent); background: rgba(0,212,170,0.05); }
+.cc-biid-label       { font-weight: 600; color: var(--text); min-width: 100px; }
+.cc-biid-id          { color: var(--text-muted); font-size: 0.75rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-biid-meta        { color: var(--text-muted); font-size: 0.7rem; white-space: nowrap; }
+.cc-empty            { color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
+
+/* Payloads */
+.cc-subdomain-row    { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+.cc-subdomain-row:last-child { border-bottom: none; }
+.cc-subdomain-str    { font-family: var(--font-mono); color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-payload-btns     { display: flex; gap: 0.3rem; }
+
+/* Poll controls */
+.cc-poll-bar         { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.cc-poll-status      { font-size: 0.8rem; color: var(--text-muted); }
+.cc-poll-status.active { color: var(--accent); }
+
+/* Interactions log */
+.cc-log              { display: flex; flex-direction: column; gap: 0.4rem; max-height: 600px; overflow-y: auto; }
+.cc-interaction      { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.cc-interaction__hdr { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.75rem; cursor: pointer; font-size: 0.8rem; transition: background 0.1s ease; }
+.cc-interaction__hdr:hover { background: var(--surface-2); }
+.cc-badge            { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 3px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.cc-badge--http      { background: rgba(0,212,170,0.15); color: var(--accent); }
+.cc-badge--dns       { background: rgba(245,158,11,0.15); color: var(--accent-warm); }
+.cc-badge--smtp      { background: rgba(139,92,246,0.15); color: #a78bfa; }
+.cc-int-string       { font-family: var(--font-mono); color: var(--text-muted); font-size: 0.75rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-int-time         { color: var(--text-muted); font-size: 0.7rem; white-space: nowrap; }
+.cc-int-src          { color: var(--text-muted); font-size: 0.7rem; white-space: nowrap; }
+.cc-int-session      { font-size: 0.65rem; color: var(--text-muted); background: var(--surface-2); padding: 0.1rem 0.35rem; border-radius: 3px; }
+.cc-interaction__body { display: none; padding: 0.75rem; border-top: 1px solid var(--border); }
+.cc-interaction__body.open { display: block; }
+.cc-interaction__pre { background: #0a0c0f; padding: 0.75rem; border-radius: 4px; font-family: var(--font-mono); font-size: 0.75rem; color: #a1b0c8; line-height: 1.6; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto; margin-top: 0.5rem; }
+.cc-interaction__pre-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.6rem; }
+.cc-interaction__pre-label:first-child { margin-top: 0; }
+.cc-toast            { position: fixed; bottom: 1.5rem; right: 1.5rem; padding: 0.5rem 1rem; background: var(--accent); color: var(--bg); font-size: 0.8rem; border-radius: 6px; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; z-index: 200; }
+.cc-toast.show       { opacity: 1; }
+
+/* Modal overlay for create/import */
+.cc-modal-overlay    { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 150; align-items: center; justify-content: center; }
+.cc-modal-overlay.open { display: flex; }
+.cc-modal            { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; width: 400px; max-width: 90vw; }
+.cc-modal__title     { font-family: var(--font-display); font-weight: 600; font-size: 1rem; margin-bottom: 1rem; }
+.cc-modal__actions   { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+</style>
+
+<!-- Toast -->
+<div id="cc-toast" class="cc-toast"></div>
+
+<!-- ── Config ──────────────────────────────────────────────────── -->
+<div class="cc-section">
+  <div class="cc-panel">
+    <div class="cc-panel__title">Configuration</div>
+    <div class="cc-row">
+      <div class="cc-field">
+        <label class="cc-label" for="cc-server">Collaborator Server</label>
+        <input id="cc-server" class="cc-input" type="text" placeholder="dbgcolab.xfcolab.ca">
+      </div>
+      <div class="cc-field">
+        <label class="cc-label" for="cc-poll-server">Poll Server <span style="opacity:0.5">(optional)</span></label>
+        <input id="cc-poll-server" class="cc-input" type="text" placeholder="defaults to server above">
+      </div>
+    </div>
+    <div class="cc-row" style="margin-top:0.75rem;">
+      <div class="cc-field" style="max-width:140px;">
+        <label class="cc-label" for="cc-poll-port">Poll Port</label>
+        <input id="cc-poll-port" class="cc-input" type="number" value="9443">
+      </div>
+      <div class="cc-field" style="max-width:160px;">
+        <label class="cc-label" for="cc-poll-interval">Auto-poll Interval (s)</label>
+        <input id="cc-poll-interval" class="cc-input" type="number" value="120">
+      </div>
+      <div class="cc-field" style="display:flex;align-items:flex-end;">
+        <button id="cc-save-config" class="cc-btn cc-btn--accent">Save Config</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Sessions ────────────────────────────────────────────────── -->
+<div class="cc-section">
+  <div class="cc-panel">
+    <div class="cc-panel__title">
+      Sessions
+      <div class="cc-actions">
+        <button id="cc-new-session" class="cc-btn cc-btn--accent cc-btn--sm">+ New</button>
+        <button id="cc-import-session" class="cc-btn cc-btn--sm">Import BIID</button>
+      </div>
+    </div>
+    <div id="cc-biid-list" class="cc-biid-list">
+      <div class="cc-empty">No sessions yet. Create one to start.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Payloads ────────────────────────────────────────────────── -->
+<div class="cc-section">
+  <div class="cc-panel">
+    <div class="cc-panel__title">
+      Payloads
+      <button id="cc-gen-subdomain" class="cc-btn cc-btn--accent cc-btn--sm" disabled>Generate Subdomain</button>
+    </div>
+    <div id="cc-payload-list">
+      <div class="cc-empty">Select a session to generate payloads.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Interactions ────────────────────────────────────────────── -->
+<div class="cc-section">
+  <div class="cc-panel">
+    <div class="cc-panel__title">Interactions</div>
+    <div class="cc-poll-bar">
+      <button id="cc-poll-now" class="cc-btn cc-btn--accent" disabled>Poll Now</button>
+      <button id="cc-poll-all" class="cc-btn" disabled>Poll All</button>
+      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.8rem;color:var(--text-muted);cursor:pointer;">
+        <input id="cc-auto-poll" type="checkbox" disabled> Auto-poll
+      </label>
+      <span id="cc-poll-status" class="cc-poll-status"></span>
+      <div style="flex:1;"></div>
+      <button id="cc-clear-log" class="cc-btn cc-btn--sm cc-btn--danger">Clear</button>
+      <button id="cc-export-log" class="cc-btn cc-btn--sm">Export</button>
+    </div>
+    <div id="cc-log" class="cc-log">
+      <div class="cc-empty">No interactions captured yet.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modals ──────────────────────────────────────────────────── -->
+<div id="cc-modal-new" class="cc-modal-overlay">
+  <div class="cc-modal">
+    <div class="cc-modal__title">New Session</div>
+    <div class="cc-field">
+      <label class="cc-label" for="cc-new-label">Session Label</label>
+      <input id="cc-new-label" class="cc-input" type="text" placeholder="e.g. Project X - March 2026">
+    </div>
+    <div class="cc-modal__actions">
+      <button class="cc-btn cc-modal-close">Cancel</button>
+      <button id="cc-new-confirm" class="cc-btn cc-btn--accent">Create</button>
+    </div>
+  </div>
+</div>
+
+<div id="cc-modal-import" class="cc-modal-overlay">
+  <div class="cc-modal">
+    <div class="cc-modal__title">Import BIID</div>
+    <div class="cc-field">
+      <label class="cc-label" for="cc-import-label">Session Label</label>
+      <input id="cc-import-label" class="cc-input" type="text" placeholder="e.g. Existing Engagement">
+    </div>
+    <div class="cc-field" style="margin-top:0.75rem;">
+      <label class="cc-label" for="cc-import-biid">BIID (base64 or URL-encoded)</label>
+      <input id="cc-import-biid" class="cc-input" type="text" placeholder="mf9G+0sOERFaPgqMbMx3/RoR6PQUX44RV7uAZiSWUfA=">
+    </div>
+    <div class="cc-modal__actions">
+      <button class="cc-btn cc-modal-close">Cancel</button>
+      <button id="cc-import-confirm" class="cc-btn cc-btn--accent">Import</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  /* ================================================================
+     Storage
+     ================================================================ */
+  const SK_CONFIG       = "forge_cc_config";
+  const SK_BIIDS        = "forge_cc_biids";
+  const SK_INTERACTIONS = "forge_cc_interactions";
+
+  function loadJSON(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; }
+    catch { return fallback; }
+  }
+  function saveJSON(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+  /* ================================================================
+     State
+     ================================================================ */
+  let config       = loadJSON(SK_CONFIG, { server: "", poll_server: "", poll_port: 9443, poll_interval: 120 });
+  let biids        = loadJSON(SK_BIIDS, {});
+  let interactions = loadJSON(SK_INTERACTIONS, []);
+  let seenKeys     = new Set(interactions.map(i => i._uid));
+  let activeBiid   = null;
+  let polling      = { active: false, timer: null };
+
+  /* ================================================================
+     DOM refs
+     ================================================================ */
+  const $server       = document.getElementById("cc-server");
+  const $pollServer   = document.getElementById("cc-poll-server");
+  const $pollPort     = document.getElementById("cc-poll-port");
+  const $pollInterval = document.getElementById("cc-poll-interval");
+  const $biidList     = document.getElementById("cc-biid-list");
+  const $payloadList  = document.getElementById("cc-payload-list");
+  const $log          = document.getElementById("cc-log");
+  const $pollStatus   = document.getElementById("cc-poll-status");
+  const $autoPoll     = document.getElementById("cc-auto-poll");
+
+  /* ================================================================
+     Config
+     ================================================================ */
+  function loadConfigUI() {
+    $server.value       = config.server || "";
+    $pollServer.value   = config.poll_server || "";
+    $pollPort.value     = config.poll_port || 9443;
+    $pollInterval.value = config.poll_interval || 120;
+  }
+
+  document.getElementById("cc-save-config").addEventListener("click", () => {
+    config.server        = $server.value.trim();
+    config.poll_server   = $pollServer.value.trim();
+    config.poll_port     = parseInt($pollPort.value) || 9443;
+    config.poll_interval = parseInt($pollInterval.value) || 120;
+    saveJSON(SK_CONFIG, config);
+    toast("Config saved");
+    updatePollControls();
+  });
+
+  function getEffectivePollServer() {
+    return config.poll_server || config.server;
+  }
+
+  /* ================================================================
+     BIID Management
+     ================================================================ */
+  function generateBiid() {
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    return btoa(String.fromCharCode.apply(null, bytes));
+  }
+
+  function normalizeBiid(raw) {
+    let b = raw.trim();
+    try { b = decodeURIComponent(b); } catch {}
+    try { atob(b); return b; } catch {}
+    return null;
+  }
+
+  function createSession(label, biid) {
+    if (!biid) biid = generateBiid();
+    biids[biid] = {
+      label: label || "Untitled",
+      subdomains: [],
+      created: new Date().toISOString().replace("T", " ").slice(0, 19),
+    };
+    activeBiid = biid;
+    saveBiids();
+    renderBiids();
+    renderPayloads();
+    updatePollControls();
+  }
+
+  function deleteSession(biid) {
+    delete biids[biid];
+    if (activeBiid === biid) activeBiid = Object.keys(biids)[0] || null;
+    saveBiids();
+    renderBiids();
+    renderPayloads();
+    updatePollControls();
+  }
+
+  function selectSession(biid) {
+    activeBiid = biid;
+    renderBiids();
+    renderPayloads();
+    updatePollControls();
+  }
+
+  function saveBiids() { saveJSON(SK_BIIDS, biids); }
+
+  /* ================================================================
+     Payload Generation
+     ================================================================ */
+  function generateInteractionString() {
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    const arr = crypto.getRandomValues(new Uint8Array(36));
+    return Array.from(arr, b => chars[b % chars.length]).join("");
+  }
+
+  function generateSubdomain() {
+    if (!activeBiid || !config.server) return;
+    const str = generateInteractionString();
+    const sub = str + "." + config.server;
+    biids[activeBiid].subdomains.push(sub);
+    saveBiids();
+    renderPayloads();
+  }
+
+  /* ================================================================
+     Polling
+     ================================================================ */
+  async function pollBiid(biid) {
+    const server = getEffectivePollServer();
+    if (!server) return { error: "No server configured" };
+
+    try {
+      const resp = await fetch("/tools/collab_client/api/poll", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ biid, server, port: config.poll_port }),
+      });
+      return await resp.json();
+    } catch (err) {
+      return { error: err.message };
+    }
+  }
+
+  async function doPoll(biid) {
+    $pollStatus.textContent = "Polling...";
+    $pollStatus.classList.add("active");
+
+    const label = biids[biid] ? biids[biid].label : "Unknown";
+    const result = await pollBiid(biid);
+
+    if (result.error) {
+      $pollStatus.textContent = "Error: " + result.error;
+      $pollStatus.classList.remove("active");
+      return;
+    }
+
+    let newCount = 0;
+    if (result.responses && result.responses.length) {
+      for (const interaction of result.responses) {
+        const uid = interaction.interactionString + "-" + interaction.time;
+        if (!seenKeys.has(uid)) {
+          seenKeys.add(uid);
+          interaction._uid = uid;
+          interaction._biidLabel = label;
+          interactions.unshift(interaction);
+          newCount++;
+        }
+      }
+      if (newCount > 0) {
+        saveJSON(SK_INTERACTIONS, interactions);
+        renderLog();
+      }
+    }
+
+    const ts = new Date().toLocaleTimeString();
+    $pollStatus.textContent = `${ts} — ${newCount} new interaction${newCount !== 1 ? "s" : ""}`;
+    $pollStatus.classList.remove("active");
+  }
+
+  async function doPollAll() {
+    const keys = Object.keys(biids);
+    if (!keys.length) return;
+    for (const biid of keys) {
+      await doPoll(biid);
+    }
+  }
+
+  function startAutoPoll() {
+    if (polling.active) return;
+    polling.active = true;
+    const run = () => doPollAll();
+    run();
+    polling.timer = setInterval(run, (config.poll_interval || 120) * 1000);
+    $pollStatus.textContent = "Auto-polling every " + (config.poll_interval || 120) + "s";
+    $pollStatus.classList.add("active");
+  }
+
+  function stopAutoPoll() {
+    polling.active = false;
+    clearInterval(polling.timer);
+    polling.timer = null;
+    $pollStatus.textContent = "";
+    $pollStatus.classList.remove("active");
+  }
+
+  /* ================================================================
+     Interaction Decoding
+     ================================================================ */
+  function b64(str) {
+    try { return atob(str); } catch { return str; }
+  }
+
+  const DNS_TYPES = {1:"A",2:"NS",5:"CNAME",6:"SOA",12:"PTR",15:"MX",16:"TXT",28:"AAAA",33:"SRV",255:"ANY"};
+
+  function decodeInteraction(ix) {
+    const proto = (ix.protocol || "").toLowerCase();
+    const d = ix.data || {};
+    const parts = [];
+
+    if (proto === "http" || proto === "https") {
+      if (d.request)  parts.push({ label: "Request",  text: b64(d.request) });
+      if (d.response) parts.push({ label: "Response", text: b64(d.response) });
+    } else if (proto === "dns") {
+      let info = "";
+      if (d.subDomain) info += "Subdomain: " + d.subDomain + "\n";
+      if (d.type != null) info += "Type: " + (DNS_TYPES[d.type] || d.type) + "\n";
+      if (info) parts.push({ label: "Details", text: info.trimEnd() });
+      if (d.rawRequest) parts.push({ label: "Raw Request", text: b64(d.rawRequest) });
+    } else if (proto === "smtp" || proto === "smtps") {
+      let info = "";
+      if (d.sender) info += "From: " + b64(d.sender) + "\n";
+      if (d.recipients) info += "To: " + d.recipients.map(b64).join(", ") + "\n";
+      if (info) parts.push({ label: "Details", text: info.trimEnd() });
+      if (d.message)      parts.push({ label: "Message",      text: b64(d.message) });
+      if (d.conversation) parts.push({ label: "Conversation", text: b64(d.conversation) });
+    }
+
+    return parts;
+  }
+
+  function formatEpochMs(ms) {
+    try { return new Date(parseInt(ms)).toISOString().replace("T", " ").slice(0, 19); }
+    catch { return ms; }
+  }
+
+  function protoBadgeClass(proto) {
+    const p = (proto || "").toLowerCase();
+    if (p === "dns") return "cc-badge--dns";
+    if (p === "smtp" || p === "smtps") return "cc-badge--smtp";
+    return "cc-badge--http";
+  }
+
+  /* ================================================================
+     Rendering
+     ================================================================ */
+  function renderBiids() {
+    const keys = Object.keys(biids);
+    if (!keys.length) {
+      $biidList.innerHTML = '<div class="cc-empty">No sessions yet. Create one to start.</div>';
+      return;
+    }
+
+    $biidList.innerHTML = keys.map(biid => {
+      const s = biids[biid];
+      const isActive = biid === activeBiid;
+      const truncId = biid.length > 24 ? biid.slice(0, 24) + "..." : biid;
+      return `<div class="cc-biid-entry${isActive ? " active" : ""}" data-biid="${esc(biid)}">
+        <span class="cc-biid-label">${esc(s.label)}</span>
+        <span class="cc-biid-id" title="${esc(biid)}">${esc(truncId)}</span>
+        <span class="cc-biid-meta">${s.subdomains.length} payload${s.subdomains.length !== 1 ? "s" : ""}</span>
+        <span class="cc-biid-meta">${esc(s.created)}</span>
+        <div class="cc-actions" onclick="event.stopPropagation()">
+          <button class="cc-btn cc-btn--sm cc-copy-biid" data-biid="${esc(biid)}" title="Copy BIID">Copy</button>
+          <button class="cc-btn cc-btn--sm cc-btn--danger cc-del-biid" data-biid="${esc(biid)}" title="Delete">Del</button>
+        </div>
+      </div>`;
+    }).join("");
+
+    $biidList.querySelectorAll(".cc-biid-entry").forEach(el => {
+      el.addEventListener("click", () => selectSession(el.dataset.biid));
+    });
+    $biidList.querySelectorAll(".cc-copy-biid").forEach(el => {
+      el.addEventListener("click", () => { copyText(el.dataset.biid); toast("BIID copied"); });
+    });
+    $biidList.querySelectorAll(".cc-del-biid").forEach(el => {
+      el.addEventListener("click", () => deleteSession(el.dataset.biid));
+    });
+  }
+
+  function renderPayloads() {
+    const btn = document.getElementById("cc-gen-subdomain");
+    if (!activeBiid || !biids[activeBiid]) {
+      $payloadList.innerHTML = '<div class="cc-empty">Select a session to generate payloads.</div>';
+      btn.disabled = true;
+      return;
+    }
+
+    btn.disabled = !config.server;
+    const subs = biids[activeBiid].subdomains;
+
+    if (!subs.length) {
+      $payloadList.innerHTML = '<div class="cc-empty">No payloads yet. Click Generate Subdomain.</div>';
+      return;
+    }
+
+    $payloadList.innerHTML = subs.map(sub => {
+      const str = sub.split(".")[0];
+      return `<div class="cc-subdomain-row">
+        <span class="cc-subdomain-str" title="${esc(sub)}">${esc(sub)}</span>
+        <div class="cc-payload-btns">
+          <button class="cc-btn cc-btn--sm cc-copy-payload" data-val="${esc("http://" + sub + "/")}">HTTP</button>
+          <button class="cc-btn cc-btn--sm cc-copy-payload" data-val="${esc("https://" + sub + "/")}">HTTPS</button>
+          <button class="cc-btn cc-btn--sm cc-copy-payload" data-val="${esc(sub)}">DNS</button>
+          <button class="cc-btn cc-btn--sm cc-copy-payload" data-val="${esc(str + "@" + config.server)}">SMTP</button>
+        </div>
+      </div>`;
+    }).join("");
+
+    $payloadList.querySelectorAll(".cc-copy-payload").forEach(el => {
+      el.addEventListener("click", () => { copyText(el.dataset.val); toast("Copied"); });
+    });
+  }
+
+  function renderLog() {
+    if (!interactions.length) {
+      $log.innerHTML = '<div class="cc-empty">No interactions captured yet.</div>';
+      return;
+    }
+
+    $log.innerHTML = interactions.map((ix, idx) => {
+      const proto = (ix.protocol || "unknown").toUpperCase();
+      const decoded = decodeInteraction(ix);
+      const bodyId = "cc-ix-body-" + idx;
+      const detailHTML = decoded.map(d =>
+        `<div class="cc-interaction__pre-label">${esc(d.label)}</div>` +
+        `<pre class="cc-interaction__pre">${esc(d.text)}</pre>`
+      ).join("") || '<span style="color:var(--text-muted);font-size:0.8rem;">No data</span>';
+
+      return `<div class="cc-interaction">
+        <div class="cc-interaction__hdr" data-target="${bodyId}">
+          <span class="cc-badge ${protoBadgeClass(ix.protocol)}">${esc(proto)}</span>
+          <span class="cc-int-string">${esc(ix.interactionString || "")}</span>
+          ${ix._biidLabel ? `<span class="cc-int-session">${esc(ix._biidLabel)}</span>` : ""}
+          <span class="cc-int-time">${formatEpochMs(ix.time)}</span>
+          <span class="cc-int-src">${esc(ix.client || "")}${ix.clientPort ? ":" + ix.clientPort : ""}</span>
+        </div>
+        <div id="${bodyId}" class="cc-interaction__body">${detailHTML}</div>
+      </div>`;
+    }).join("");
+
+    $log.querySelectorAll(".cc-interaction__hdr").forEach(hdr => {
+      hdr.addEventListener("click", () => {
+        const body = document.getElementById(hdr.dataset.target);
+        if (body) body.classList.toggle("open");
+      });
+    });
+  }
+
+  function updatePollControls() {
+    const hasSession = Object.keys(biids).length > 0;
+    const hasServer = !!getEffectivePollServer();
+    document.getElementById("cc-poll-now").disabled = !activeBiid || !hasServer;
+    document.getElementById("cc-poll-all").disabled = !hasSession || !hasServer;
+    $autoPoll.disabled = !hasSession || !hasServer;
+  }
+
+  /* ================================================================
+     Utilities
+     ================================================================ */
+  function esc(str) {
+    const d = document.createElement("div");
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function copyText(text) {
+    navigator.clipboard.writeText(text).catch(() => {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    });
+  }
+
+  function toast(msg) {
+    const el = document.getElementById("cc-toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 1500);
+  }
+
+  /* ================================================================
+     Modals
+     ================================================================ */
+  function openModal(id) { document.getElementById(id).classList.add("open"); }
+  function closeModals() { document.querySelectorAll(".cc-modal-overlay").forEach(m => m.classList.remove("open")); }
+
+  document.querySelectorAll(".cc-modal-close").forEach(b => b.addEventListener("click", closeModals));
+  document.querySelectorAll(".cc-modal-overlay").forEach(m => {
+    m.addEventListener("click", (e) => { if (e.target === m) closeModals(); });
+  });
+
+  document.getElementById("cc-new-session").addEventListener("click", () => {
+    document.getElementById("cc-new-label").value = "";
+    openModal("cc-modal-new");
+    document.getElementById("cc-new-label").focus();
+  });
+
+  document.getElementById("cc-new-confirm").addEventListener("click", () => {
+    const label = document.getElementById("cc-new-label").value.trim();
+    if (!label) { toast("Enter a label"); return; }
+    createSession(label);
+    closeModals();
+    toast("Session created");
+  });
+
+  document.getElementById("cc-import-session").addEventListener("click", () => {
+    document.getElementById("cc-import-label").value = "";
+    document.getElementById("cc-import-biid").value = "";
+    openModal("cc-modal-import");
+    document.getElementById("cc-import-label").focus();
+  });
+
+  document.getElementById("cc-import-confirm").addEventListener("click", () => {
+    const label = document.getElementById("cc-import-label").value.trim();
+    const raw = document.getElementById("cc-import-biid").value.trim();
+    if (!label || !raw) { toast("Fill in both fields"); return; }
+    const biid = normalizeBiid(raw);
+    if (!biid) { toast("Invalid BIID format"); return; }
+    createSession(label, biid);
+    closeModals();
+    toast("Session imported");
+  });
+
+  /* ================================================================
+     Event Binding
+     ================================================================ */
+  document.getElementById("cc-gen-subdomain").addEventListener("click", generateSubdomain);
+
+  document.getElementById("cc-poll-now").addEventListener("click", () => {
+    if (activeBiid) doPoll(activeBiid);
+  });
+
+  document.getElementById("cc-poll-all").addEventListener("click", doPollAll);
+
+  $autoPoll.addEventListener("change", () => {
+    if ($autoPoll.checked) startAutoPoll();
+    else stopAutoPoll();
+  });
+
+  document.getElementById("cc-clear-log").addEventListener("click", () => {
+    interactions = [];
+    seenKeys.clear();
+    saveJSON(SK_INTERACTIONS, interactions);
+    renderLog();
+    toast("Log cleared");
+  });
+
+  document.getElementById("cc-export-log").addEventListener("click", () => {
+    if (!interactions.length) { toast("Nothing to export"); return; }
+
+    const lines = interactions.map(ix => {
+      const parts = decodeInteraction(ix);
+      let out = `[${(ix.protocol || "").toUpperCase()}] ${ix.interactionString}\n`;
+      out += `  Time:    ${formatEpochMs(ix.time)}\n`;
+      out += `  Source:  ${ix.client || "?"}:${ix.clientPort || "?"}\n`;
+      out += `  Session: ${ix._biidLabel || "?"}\n`;
+      for (const p of parts) {
+        out += `  --- ${p.label} ---\n`;
+        out += p.text.split("\n").map(l => "  " + l).join("\n") + "\n";
+      }
+      return out;
+    });
+
+    const blob = new Blob([lines.join("\n" + "=".repeat(60) + "\n\n")], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "forge_collab_interactions_" + new Date().toISOString().slice(0, 10) + ".txt";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast("Exported");
+  });
+
+  // Enter key support in modals
+  document.getElementById("cc-new-label").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("cc-new-confirm").click();
+  });
+  document.getElementById("cc-import-biid").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("cc-import-confirm").click();
+  });
+
+  /* ================================================================
+     Init
+     ================================================================ */
+  loadConfigUI();
+  if (Object.keys(biids).length) activeBiid = Object.keys(biids)[0];
+  renderBiids();
+  renderPayloads();
+  renderLog();
+  updatePollControls();
+})();
+</script>
+{% endblock %}
