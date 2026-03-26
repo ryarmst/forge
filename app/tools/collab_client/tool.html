@@ -61,6 +61,21 @@
 .cc-modal            { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; width: 400px; max-width: 90vw; }
 .cc-modal__title     { font-family: var(--font-display); font-weight: 600; font-size: 1rem; margin-bottom: 1rem; }
 .cc-modal__actions   { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+
+.cc-debug-toggle     { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none; }
+.cc-debug-toggle input { cursor: pointer; }
+.cc-debug-panel      { display: none; }
+.cc-debug-panel.open { display: block; }
+.cc-debug-feed       { display: flex; flex-direction: column; gap: 0.3rem; max-height: 500px; overflow-y: auto; font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.55; }
+.cc-debug-entry      { padding: 0.6rem 0.75rem; border-radius: 6px; background: #0a0c0f; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; color: #8b9cb8; }
+.cc-debug-entry .dbg-ts   { color: var(--text-muted); }
+.cc-debug-entry .dbg-ok   { color: var(--accent); font-weight: 600; }
+.cc-debug-entry .dbg-err  { color: var(--danger); font-weight: 600; }
+.cc-debug-entry .dbg-key  { color: #7aa2f7; }
+.cc-debug-entry .dbg-val  { color: #c0caf5; }
+.cc-debug-entry .dbg-dim  { color: #565f89; }
+.cc-debug-bar        { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; }
+.cc-debug-counter    { font-size: 0.75rem; color: var(--text-muted); margin-left: auto; }
 </style>
 
 <div id="cc-toast" class="cc-toast"></div>
@@ -149,6 +164,28 @@
   </div>
 </div>
 
+<!-- ── Debug Log ──────────────────────────────────────────────── -->
+<div class="cc-section">
+  <div class="cc-panel">
+    <div class="cc-panel__title">
+      Debug Log
+      <label class="cc-debug-toggle">
+        <input id="cc-debug-enabled" type="checkbox"> Enable
+      </label>
+    </div>
+    <div id="cc-debug-panel" class="cc-debug-panel">
+      <div class="cc-debug-bar">
+        <button id="cc-debug-clear" class="cc-btn cc-btn--sm cc-btn--danger">Clear</button>
+        <button id="cc-debug-export" class="cc-btn cc-btn--sm">Export</button>
+        <span id="cc-debug-counter" class="cc-debug-counter">0 entries</span>
+      </div>
+      <div id="cc-debug-feed" class="cc-debug-feed">
+        <div class="cc-empty">Debug logging enabled. Poll a session to see entries.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── Modals ──────────────────────────────────────────────────── -->
 <div id="cc-modal-new" class="cc-modal-overlay">
   <div class="cc-modal">
@@ -189,6 +226,8 @@
   const SK_CONFIG       = "forge_cc_config";
   const SK_BIIDS        = "forge_cc_biids";
   const SK_INTERACTIONS = "forge_cc_interactions";
+  const SK_DEBUGLOG     = "forge_cc_debuglog";
+  const SK_DEBUG_ON     = "forge_cc_debug_on";
 
   function loadJSON(key, fallback) {
     try { return JSON.parse(localStorage.getItem(key)) || fallback; }
@@ -204,6 +243,8 @@
   let seenKeys     = new Set(interactions.map(i => i._uid));
   let activeBiid   = null;
   let polling      = { active: false, timer: null };
+  let debugLog     = loadJSON(SK_DEBUGLOG, []);
+  let debugEnabled = localStorage.getItem(SK_DEBUG_ON) === "1";
 
   /* ================================================================
      DOM refs
@@ -219,6 +260,10 @@
   const $pollStatus   = document.getElementById("cc-poll-status");
   const $autoPoll     = document.getElementById("cc-auto-poll");
   const $pollError    = document.getElementById("cc-poll-error");
+  const $debugToggle  = document.getElementById("cc-debug-enabled");
+  const $debugPanel   = document.getElementById("cc-debug-panel");
+  const $debugFeed    = document.getElementById("cc-debug-feed");
+  const $debugCounter = document.getElementById("cc-debug-counter");
 
   /* ================================================================
      Config — reads live from fields, auto-persists on change
@@ -331,23 +376,25 @@
      ================================================================ */
   async function pollBiid(biid) {
     const server = getEffectivePollServer();
-    if (!server) return { error: "No server configured" };
+    if (!server) return { error: "No server configured", _requestMeta: { server: "(none)" } };
     const cfg = getConfig();
+
+    const payload = { biid, server, port: cfg.poll_port, protocol: cfg.poll_proto };
+    const meta = { biid, server, port: cfg.poll_port, protocol: cfg.poll_proto, ts: new Date().toISOString() };
 
     try {
       const resp = await fetch("/tools/collab_client/api/poll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          biid,
-          server,
-          port: cfg.poll_port,
-          protocol: cfg.poll_proto,
-        }),
+        body: JSON.stringify(payload),
       });
-      return await resp.json();
+      meta.httpStatus = resp.status;
+      const json = await resp.json();
+      json._requestMeta = meta;
+      return json;
     } catch (err) {
-      return { error: err.message };
+      meta.fetchError = err.message;
+      return { error: err.message, _requestMeta: meta };
     }
   }
 
@@ -358,6 +405,8 @@
 
     const label = biids[biid] ? biids[biid].label : "Unknown";
     const result = await pollBiid(biid);
+
+    appendDebugEntry(label, result);
 
     if (result.error) {
       let msg = "Error: " + result.error;
@@ -584,6 +633,135 @@
     $pollError.textContent = "";
   }
 
+  /* ================================================================
+     Debug Log
+     ================================================================ */
+  function appendDebugEntry(sessionLabel, result) {
+    if (!debugEnabled) return;
+
+    const entry = {
+      ts: new Date().toISOString(),
+      session: sessionLabel,
+      request: result._requestMeta || {},
+      error: result.error || null,
+      debug: result.debug || {},
+      responseCount: result.responses ? result.responses.length : 0,
+    };
+
+    debugLog.unshift(entry);
+    if (debugLog.length > 200) debugLog.length = 200;
+    saveJSON(SK_DEBUGLOG, debugLog);
+    renderDebugFeed();
+  }
+
+  function fmtDbg(key, val) {
+    return `<span class="dbg-key">${esc(key)}:</span> <span class="dbg-val">${esc(String(val))}</span>`;
+  }
+
+  function renderDebugFeed() {
+    $debugCounter.textContent = debugLog.length + " entr" + (debugLog.length === 1 ? "y" : "ies");
+    if (!debugLog.length) {
+      $debugFeed.innerHTML = '<div class="cc-empty">Debug logging enabled. Poll a session to see entries.</div>';
+      return;
+    }
+
+    $debugFeed.innerHTML = debugLog.map(e => {
+      const lines = [];
+      const ts = e.ts.replace("T", " ").replace("Z", "");
+      const status = e.error
+        ? `<span class="dbg-err">ERROR</span>`
+        : `<span class="dbg-ok">OK</span>`;
+
+      lines.push(`<span class="dbg-ts">[${esc(ts)}]</span> ${status}  session: <span class="dbg-val">${esc(e.session)}</span>`);
+      lines.push("");
+
+      lines.push(`<span class="dbg-dim">── Request ──</span>`);
+      if (e.request.protocol) lines.push(fmtDbg("  protocol", e.request.protocol));
+      if (e.request.server)   lines.push(fmtDbg("  server", e.request.server));
+      if (e.request.port)     lines.push(fmtDbg("  port", e.request.port));
+      if (e.request.biid)     lines.push(fmtDbg("  biid", e.request.biid));
+      if (e.request.httpStatus) lines.push(fmtDbg("  proxy HTTP status", e.request.httpStatus));
+      if (e.request.fetchError) lines.push(`  <span class="dbg-err">fetch error: ${esc(e.request.fetchError)}</span>`);
+
+      if (e.error) {
+        lines.push("");
+        lines.push(`<span class="dbg-dim">── Error ──</span>`);
+        lines.push(`  <span class="dbg-err">${esc(e.error)}</span>`);
+      }
+
+      const d = e.debug;
+      if (d && Object.keys(d).length) {
+        lines.push("");
+        lines.push(`<span class="dbg-dim">── Server Debug ──</span>`);
+        if (d.url)          lines.push(fmtDbg("  url", d.url));
+        if (d.status)       lines.push(fmtDbg("  status", d.status));
+        if (d.protocol)     lines.push(fmtDbg("  protocol", d.protocol));
+        if (d.biid_raw)     lines.push(fmtDbg("  biid_raw", d.biid_raw));
+        if (d.biid_encoded) lines.push(fmtDbg("  biid_encoded", d.biid_encoded));
+        if (d.body_length != null) lines.push(fmtDbg("  body_length", d.body_length));
+        if (d.parsed)       lines.push(fmtDbg("  parsed", d.parsed));
+        if (d.parse_error)  lines.push(`  <span class="dbg-err">parse_error: ${esc(d.parse_error)}</span>`);
+        if (d.error_type)   lines.push(fmtDbg("  error_type", d.error_type));
+        if (d.error_detail) lines.push(`  <span class="dbg-err">error_detail: ${esc(d.error_detail)}</span>`);
+
+        if (d.headers) {
+          lines.push(`  <span class="dbg-dim">response headers:</span>`);
+          for (const [hk, hv] of Object.entries(d.headers)) {
+            lines.push(`    ${fmtDbg(hk, hv)}`);
+          }
+        }
+
+        if (d.body_raw) {
+          lines.push(`  <span class="dbg-dim">body_raw:</span>`);
+          lines.push(`  <span class="dbg-val">${esc(d.body_raw)}</span>`);
+        }
+      }
+
+      lines.push("");
+      lines.push(fmtDbg("  responses", e.responseCount));
+
+      return `<div class="cc-debug-entry">${lines.join("\n")}</div>`;
+    }).join("");
+  }
+
+  function clearDebugLog() {
+    debugLog = [];
+    saveJSON(SK_DEBUGLOG, debugLog);
+    renderDebugFeed();
+  }
+
+  function exportDebugLog() {
+    if (!debugLog.length) { toast("Nothing to export"); return; }
+    const text = debugLog.map(e => {
+      let out = `[${e.ts}] ${e.error ? "ERROR" : "OK"} session=${e.session}\n`;
+      out += `  Request: ${JSON.stringify(e.request, null, 2)}\n`;
+      if (e.error) out += `  Error: ${e.error}\n`;
+      out += `  Debug: ${JSON.stringify(e.debug, null, 2)}\n`;
+      out += `  Responses: ${e.responseCount}\n`;
+      return out;
+    }).join("\n" + "=".repeat(70) + "\n\n");
+
+    const blob = new Blob([text], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "forge_collab_debug_" + new Date().toISOString().slice(0, 10) + ".txt";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast("Debug log exported");
+  }
+
+  function setDebugEnabled(on) {
+    debugEnabled = on;
+    localStorage.setItem(SK_DEBUG_ON, on ? "1" : "0");
+    $debugToggle.checked = on;
+    if (on) {
+      $debugPanel.classList.add("open");
+      renderDebugFeed();
+    } else {
+      $debugPanel.classList.remove("open");
+    }
+  }
+
   function updatePollControls() {
     const hasSession = Object.keys(biids).length > 0;
     const hasServer = !!getEffectivePollServer();
@@ -718,10 +896,15 @@
     if (e.key === "Enter") document.getElementById("cc-import-confirm").click();
   });
 
+  $debugToggle.addEventListener("change", () => setDebugEnabled($debugToggle.checked));
+  document.getElementById("cc-debug-clear").addEventListener("click", () => { clearDebugLog(); toast("Debug log cleared"); });
+  document.getElementById("cc-debug-export").addEventListener("click", exportDebugLog);
+
   /* ================================================================
      Init
      ================================================================ */
   loadConfigUI();
+  setDebugEnabled(debugEnabled);
   if (Object.keys(biids).length) activeBiid = Object.keys(biids)[0];
   renderBiids();
   renderPayloads();
