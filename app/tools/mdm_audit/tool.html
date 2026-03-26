@@ -1,0 +1,201 @@
+{% extends "tool_base.html" %}
+{% block tool_content %}
+<style>
+.ma-section          { margin-bottom: 1.5rem; }
+.ma-panel            { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+.ma-panel__title     { font-family: var(--font-display); font-weight: 600; font-size: 1rem; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+.ma-btn              { padding: 0.45rem 0.9rem; font-family: var(--font-mono); font-size: 0.8rem; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: all 0.15s ease; background: var(--surface-2); color: var(--text-muted); }
+.ma-btn:hover        { border-color: var(--accent); color: var(--accent); }
+.ma-btn--accent      { border-color: var(--accent); color: var(--accent); background: rgba(0,212,170,0.08); }
+.ma-btn--accent:hover { background: rgba(0,212,170,0.18); }
+.ma-btn--sm          { padding: 0.25rem 0.5rem; font-size: 0.7rem; }
+.ma-btn:disabled     { opacity: 0.4; cursor: not-allowed; }
+.ma-actions          { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.ma-label            { display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
+.ma-empty            { color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
+
+.ma-dropzone         { border: 2px dashed var(--border); border-radius: 10px; padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s ease, background 0.2s ease; }
+.ma-dropzone:hover,
+.ma-dropzone.dragover { border-color: var(--accent); background: rgba(0,212,170,0.04); }
+.ma-dropzone__text   { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; }
+.ma-dropzone__text strong { color: var(--text); }
+.ma-dropzone__hint   { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.5rem; font-family: var(--font-mono); }
+.ma-dropzone__file   { display: none; }
+
+.ma-stat-row         { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.ma-stat             { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 1rem; min-width: 100px; flex: 1; text-align: center; }
+.ma-stat__num        { font-size: 1.4rem; font-weight: 600; font-family: var(--font-mono); color: var(--text); line-height: 1; }
+.ma-stat__label      { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.2rem; }
+.ma-stat--danger .ma-stat__num  { color: var(--danger); }
+.ma-stat--warn .ma-stat__num    { color: var(--accent-warm); }
+.ma-stat--ok .ma-stat__num      { color: var(--accent); }
+
+.ma-report-frame     { width: 100%; border: 1px solid var(--border); border-radius: 8px; min-height: 400px; background: #0f1117; }
+
+.ma-error            { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); border-radius: 6px; padding: 0.75rem 1rem; color: var(--danger); font-size: 0.85rem; margin-bottom: 1rem; display: none; }
+
+.ma-spinner          { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: ma-spin 0.6s linear infinite; margin-right: 0.4rem; vertical-align: middle; }
+@keyframes ma-spin   { to { transform: rotate(360deg); } }
+</style>
+
+<!-- ── Upload ──────────────────────────────────────────────────── -->
+<div class="ma-section">
+  <div class="ma-panel">
+    <div class="ma-panel__title">
+      Upload Profile
+      <div class="ma-actions">
+        <a id="ma-dl-ref" href="/tools/mdm_audit/api/reference" class="ma-btn ma-btn--sm" download>Download Reference YAML</a>
+      </div>
+    </div>
+    <div id="ma-dropzone" class="ma-dropzone">
+      <div class="ma-dropzone__text">
+        <strong>Drop</strong> an MDM profile here or <strong>click</strong> to browse
+      </div>
+      <div class="ma-dropzone__hint">.xml &middot; .mobileconfig &middot; .plist &middot; max 5 MB</div>
+      <input id="ma-file" class="ma-dropzone__file" type="file" accept=".xml,.mobileconfig,.plist">
+    </div>
+    <div id="ma-error" class="ma-error"></div>
+    <div id="ma-status" style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-muted);display:none;"></div>
+  </div>
+</div>
+
+<!-- ── Results ─────────────────────────────────────────────────── -->
+<div id="ma-results" class="ma-section" style="display:none;">
+  <div class="ma-panel">
+    <div class="ma-panel__title">
+      Report
+      <div class="ma-actions">
+        <button id="ma-dl-report" class="ma-btn ma-btn--accent ma-btn--sm">Download HTML Report</button>
+        <button id="ma-new" class="ma-btn ma-btn--sm">New Analysis</button>
+      </div>
+    </div>
+    <div id="ma-summary" class="ma-stat-row"></div>
+    <iframe id="ma-report" class="ma-report-frame" sandbox="allow-same-origin" title="MDM Audit Report"></iframe>
+  </div>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  const $dropzone = document.getElementById("ma-dropzone");
+  const $file     = document.getElementById("ma-file");
+  const $error    = document.getElementById("ma-error");
+  const $status   = document.getElementById("ma-status");
+  const $results  = document.getElementById("ma-results");
+  const $summary  = document.getElementById("ma-summary");
+  const $report   = document.getElementById("ma-report");
+
+  let lastHtml = null;
+  let lastFilename = null;
+
+  $dropzone.addEventListener("click", () => $file.click());
+  $dropzone.addEventListener("dragover", (e) => { e.preventDefault(); $dropzone.classList.add("dragover"); });
+  $dropzone.addEventListener("dragleave", () => $dropzone.classList.remove("dragover"));
+  $dropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    $dropzone.classList.remove("dragover");
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  $file.addEventListener("change", () => { if ($file.files.length) handleFile($file.files[0]); });
+
+  document.getElementById("ma-dl-report").addEventListener("click", downloadReport);
+  document.getElementById("ma-new").addEventListener("click", resetUI);
+
+  function showError(msg) {
+    $error.textContent = msg;
+    $error.style.display = "block";
+  }
+
+  function hideError() {
+    $error.style.display = "none";
+    $error.textContent = "";
+  }
+
+  function resetUI() {
+    hideError();
+    $status.style.display = "none";
+    $results.style.display = "none";
+    $file.value = "";
+    lastHtml = null;
+    lastFilename = null;
+  }
+
+  async function handleFile(file) {
+    hideError();
+    $results.style.display = "none";
+
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (!["xml", "mobileconfig", "plist"].includes(ext)) {
+      showError("Unsupported file type. Use .xml, .mobileconfig, or .plist");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showError("File exceeds 5 MB limit.");
+      return;
+    }
+
+    $status.innerHTML = '<span class="ma-spinner"></span>Analysing profile...';
+    $status.style.display = "block";
+
+    const form = new FormData();
+    form.append("profile", file);
+
+    try {
+      const resp = await fetch("/tools/mdm_audit/api/analyse", { method: "POST", body: form });
+      const data = await resp.json();
+
+      $status.style.display = "none";
+
+      if (data.error) {
+        showError(data.error);
+        return;
+      }
+
+      lastHtml = data.html;
+      lastFilename = file.name.replace(/\.[^.]+$/, "") + "_report.html";
+
+      const s = data.summary;
+      $summary.innerHTML = [
+        statHtml(s.restriction_count, "Restrictions", ""),
+        statHtml(s.deprecated, "Deprecated", s.deprecated > 0 ? "ma-stat--warn" : "ma-stat--ok"),
+        statHtml(s.insecure, "Insecure", s.insecure > 0 ? "ma-stat--danger" : "ma-stat--ok"),
+        statHtml(s.conflicts, "Conflicts", s.conflicts > 0 ? "ma-stat--danger" : "ma-stat--ok"),
+        statHtml(s.allowed_apps, "Allowed Apps", ""),
+        statHtml(s.blocked_apps, "Blocked Apps", ""),
+      ].join("");
+
+      $report.srcdoc = data.html;
+      $report.style.height = "700px";
+      $results.style.display = "block";
+
+      $report.addEventListener("load", function resizer() {
+        try {
+          const h = $report.contentDocument.documentElement.scrollHeight;
+          if (h > 200) $report.style.height = Math.min(h + 40, 5000) + "px";
+        } catch {}
+        $report.removeEventListener("load", resizer);
+      });
+
+    } catch (err) {
+      $status.style.display = "none";
+      showError("Request failed: " + err.message);
+    }
+  }
+
+  function statHtml(value, label, cls) {
+    return `<div class="ma-stat ${cls}"><div class="ma-stat__num">${value}</div><div class="ma-stat__label">${label}</div></div>`;
+  }
+
+  function downloadReport() {
+    if (!lastHtml) return;
+    const blob = new Blob([lastHtml], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = lastFilename || "mdm_report.html";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+})();
+</script>
+{% endblock %}
