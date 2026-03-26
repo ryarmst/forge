@@ -22,7 +22,7 @@ Must export a `TOOL_MANIFEST` dict with **all** of these keys:
 | `slug`             | str        | **Must match directory name exactly**      |
 | `version`          | str        | Semver (e.g. `"1.0.0"`)                   |
 | `description`      | str        | 1-2 sentences (used for search)           |
-| `tags`             | list[str]  | Lowercase keywords (used for search)      |
+| `tags`             | list[str]  | Lowercase keywords (use only 1-3 very relevant ones) (used for search)      |
 | `has_server_logic` | bool       | `True` only if you have a `routes.py`     |
 
 ### tool.html

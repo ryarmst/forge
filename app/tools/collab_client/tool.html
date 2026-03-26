@@ -139,6 +139,8 @@
       <div class="cc-actions">
         <button id="cc-new-session" class="cc-btn cc-btn--accent cc-btn--sm">+ New</button>
         <button id="cc-import-session" class="cc-btn cc-btn--sm">Import BIID</button>
+        <button id="cc-export-session" class="cc-btn cc-btn--sm">Export Session</button>
+        <button id="cc-import-session-btn" class="cc-btn cc-btn--sm">Import Session</button>
       </div>
     </div>
     <div id="cc-biid-list" class="cc-biid-list">
@@ -237,6 +239,27 @@
   </div>
 </div>
 
+<div id="cc-modal-import-session" class="cc-modal-overlay">
+  <div class="cc-modal">
+    <div class="cc-modal__title">Import Session</div>
+
+    <div class="cc-field">
+      <label class="cc-label">Session JSON</label>
+      <textarea id="cc-import-session-json" class="cc-input" rows="8" placeholder='Paste exported session JSON here...'></textarea>
+    </div>
+
+    <div class="cc-field" style="margin-top:0.75rem;">
+      <label class="cc-label">Or choose a .json file</label>
+      <input id="cc-import-session-file" class="cc-input" type="file" accept="application/json,.json">
+    </div>
+
+    <div class="cc-modal__actions">
+      <button class="cc-btn cc-modal-close">Cancel</button>
+      <button id="cc-import-session-confirm" class="cc-btn cc-btn--accent">Import</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function() {
   "use strict";
@@ -263,6 +286,7 @@
   let polling      = { active: false, timer: null };
   let debugLog     = loadJSON(SK_DEBUGLOG, []);
   let debugEnabled = localStorage.getItem(SK_DEBUG_ON) === "1";
+  let pendingSessionImportText = "";
 
   /* ================================================================
      DOM refs
@@ -378,6 +402,106 @@
   }
 
   function saveBiids() { saveJSON(SK_BIIDS, biids); }
+
+  /* ================================================================
+     Session Export / Import
+     ================================================================ */
+  function getActiveSessionOrNull() {
+    if (!activeBiid) return null;
+    const s = biids[activeBiid];
+    if (!s) return null;
+    return { biid: activeBiid, ...s };
+  }
+
+  function exportActiveSession() {
+    const s = getActiveSessionOrNull();
+    if (!s) { toast("No active session to export"); return; }
+
+    // Add explicit BIID field since sessions are stored under `biids[biid]`.
+    const exportObj = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      session: s,
+    };
+
+    const text = JSON.stringify(exportObj, null, 2);
+    const blob = new Blob([text], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    const safeLabel = (s.label || "session").replace(/[^a-zA-Z0-9_\-]+/g, "_").slice(0, 60);
+    a.download = `forge_cc_session_${safeLabel}_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast("Session exported");
+  }
+
+  function openImportSessionModal() {
+    pendingSessionImportText = "";
+    const $txt = document.getElementById("cc-import-session-json");
+    const $file = document.getElementById("cc-import-session-file");
+    if ($txt) $txt.value = "";
+    if ($file) $file.value = "";
+    openModal("cc-modal-import-session");
+  }
+
+  function normalizeImportedSession(rawObj) {
+    // Accept either { session: {...} } or the session object itself.
+    const obj = rawObj && rawObj.session ? rawObj.session : rawObj;
+    if (!obj || typeof obj !== "object") return { error: "Invalid JSON (expected session object)" };
+
+    const biid = (obj.biid || "").toString().trim();
+    if (!biid) return { error: "Missing 'biid' in exported session JSON" };
+
+    const label = (obj.label || "Imported Session").toString().slice(0, 200);
+    const server = (obj.server || "").toString().trim();
+    const key_hash = obj.key_hash != null ? obj.key_hash : null;
+
+    const subdomains = Array.isArray(obj.subdomains) ? obj.subdomains.filter(x => typeof x === "string" && x.trim()) : [];
+
+    // Counter is the "next index to derive"; if absent, fall back to payload count.
+    let counter = obj.counter;
+    if (!Number.isFinite(counter)) counter = subdomains.length;
+    counter = Math.max(0, parseInt(counter, 10) || 0);
+
+    const created = (obj.created || new Date().toISOString()).toString().slice(0, 32);
+
+    return {
+      biid,
+      session: {
+        label,
+        server,
+        key_hash,
+        counter,
+        subdomains,
+        created,
+      }
+    };
+  }
+
+  function importSessionFromText(text) {
+    let raw = null;
+    try { raw = JSON.parse(text); } catch (e) {
+      return { error: "Invalid JSON: " + e.message };
+    }
+
+    const norm = normalizeImportedSession(raw);
+    if (norm.error) return norm;
+
+    // Overwrite/merge into existing localStorage sessions.
+    biids[norm.biid] = norm.session;
+    activeBiid = norm.biid;
+
+    // Convenience: set the main server input to match the session server.
+    if (norm.session.server != null) $server.value = norm.session.server;
+    persistConfig();
+
+    saveBiids();
+    renderBiids();
+    renderPayloads();
+    updatePollControls();
+
+    return { ok: true };
+  }
 
   /* ================================================================
      Payload Generation — uses server-side KDF
@@ -876,6 +1000,45 @@
     await createSession(label, biid);
     closeModals();
     toast("Session imported");
+  });
+
+  // Export / Import full session (BIID + generated payloads)
+  document.getElementById("cc-export-session").addEventListener("click", () => {
+    exportActiveSession();
+  });
+
+  document.getElementById("cc-import-session-btn").addEventListener("click", () => {
+    openImportSessionModal();
+  });
+
+  const $ccImportSessionFile = document.getElementById("cc-import-session-file");
+  const $ccImportSessionTextarea = document.getElementById("cc-import-session-json");
+  if ($ccImportSessionFile) {
+    $ccImportSessionFile.addEventListener("change", () => {
+      const f = $ccImportSessionFile.files && $ccImportSessionFile.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        pendingSessionImportText = String(reader.result || "");
+        if ($ccImportSessionTextarea) $ccImportSessionTextarea.value = pendingSessionImportText;
+      };
+      reader.readAsText(f);
+    });
+  }
+
+  document.getElementById("cc-import-session-confirm").addEventListener("click", () => {
+    const txt = ($ccImportSessionTextarea && $ccImportSessionTextarea.value) ? $ccImportSessionTextarea.value.trim() : "";
+    const raw = txt || pendingSessionImportText;
+    if (!raw) { toast("Paste or upload exported session JSON"); return; }
+
+    const res = importSessionFromText(raw);
+    if (res && res.error) {
+      toast(res.error);
+      return;
+    }
+
+    closeModals();
+    toast("Session imported (payloads restored)");
   });
 
   /* ================================================================

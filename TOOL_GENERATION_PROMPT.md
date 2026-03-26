@@ -19,7 +19,7 @@ OUTPUT THESE FILES:
         "slug": str,              # URL-safe ID, MUST match directory name
         "version": str,           # Semver
         "description": str,       # 1-2 sentences for search indexing
-        "tags": list[str],        # Lowercase keywords for search
+        "tags": list[str],        # Lowercase keywords for search (use only 1-3 very relevant ones)
         "has_server_logic": bool, # True only if routes.py exists
     }
 
