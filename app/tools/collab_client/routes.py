@@ -1,8 +1,10 @@
 """
-Collaborator Client — server-side poll proxy.
+Collaborator Client — server-side endpoints.
 
-The browser can't directly hit the Collaborator polling endpoint due to CORS
-and self-signed certificate issues. This blueprint proxies those requests.
+Provides:
+  POST /api/generate-biid   — create a new BIID + key hash
+  POST /api/derive-payload  — derive a subdomain from a BIID + counter
+  POST /api/poll            — proxy poll requests to the Collaborator server
 """
 
 import json
@@ -13,6 +15,14 @@ import urllib.request
 import urllib.error
 
 from flask import Blueprint, request, jsonify
+
+from app.tools.collab_client.kdf import (
+    generate_biid,
+    compute_key_hash,
+    derive_subdomain,
+    make_payload,
+)
+import base64
 
 blueprint = Blueprint("collab_client", __name__)
 
@@ -27,7 +37,6 @@ _SSL_CTX.verify_mode = ssl.CERT_NONE
 
 
 def _body_preview(raw, max_len=2000):
-    """Return a truncated UTF-8 preview of a response body."""
     try:
         text = raw.decode("utf-8", errors="replace")
     except Exception:
@@ -37,13 +46,57 @@ def _body_preview(raw, max_len=2000):
     return text
 
 
+# ── BIID Generation ──────────────────────────────────────────────────────────
+
+@blueprint.route("/api/generate-biid", methods=["POST"])
+def api_generate_biid():
+    """Generate a new BIID and return it with its key hash."""
+    biid = generate_biid()
+    biid_bytes = base64.b64decode(biid)
+    key_hash = compute_key_hash(biid_bytes)
+    return jsonify({"biid": biid, "key_hash": key_hash})
+
+
+# ── Payload Derivation ───────────────────────────────────────────────────────
+
+@blueprint.route("/api/derive-payload", methods=["POST"])
+def api_derive_payload():
+    """Derive one or more subdomain payloads from a BIID."""
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Missing request body"}), 400
+
+    biid = (data.get("biid") or "").strip()
+    server = (data.get("server") or "").strip()
+    start = data.get("index", 0)
+    count = data.get("count", 1)
+
+    if not biid:
+        return jsonify({"error": "Missing BIID"}), 400
+
+    try:
+        biid_bytes = base64.b64decode(biid)
+        if len(biid_bytes) != 32:
+            raise ValueError("bad length")
+    except Exception:
+        return jsonify({"error": "Invalid BIID (must be 32 bytes, Base64-encoded)"}), 400
+
+    count = min(max(int(count), 1), 50)
+    results = []
+    for i in range(count):
+        idx = int(start) + i
+        sub = derive_subdomain(biid, idx)
+        full = (sub + "." + server) if server else sub
+        results.append({"index": idx, "subdomain": sub, "payload": full})
+
+    return jsonify({"payloads": results})
+
+
+# ── Poll Proxy ───────────────────────────────────────────────────────────────
+
 @blueprint.route("/api/poll", methods=["POST"])
 def poll():
-    """Proxy a poll request to the Collaborator server.
-
-    Always returns a debug object with full request/response details
-    so the client-side debug log can display them.
-    """
+    """Proxy a poll request to the Collaborator server."""
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "Missing request body", "debug": {}}), 400
