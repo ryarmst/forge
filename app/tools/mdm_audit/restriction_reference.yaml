@@ -276,7 +276,7 @@ restrictions:
     insecure_if_value: true
     insecure_severity: MEDIUM
     insecure_note: >
-      Wallet notifications visible on Lock Screen. On a retail/beauty device
+      Wallet notifications visible on Lock Screen. On a retail device
       this may expose customer-facing payment flows without authentication.
 
   # ── PASSCODE ──────────────────────────────────────────────────────────────
@@ -485,8 +485,10 @@ restrictions:
     insecure_if_value: true
     insecure_severity: HIGH
     insecure_note: >
-      Users can wipe the device, removing all MDM enrollment and controls.
-      Critical on shared or kiosk devices.
+      Users can wipe the device via Settings. On devices enrolled via Automated
+      Device Enrollment (ADE/DEP), the device will re-enroll at next setup,
+      mitigating permanent loss of management. On manually-enrolled devices, a
+      wipe permanently removes MDM. Critical on shared, kiosk, or non-ADE devices.
 
   - key: allowDeviceNameModification
     type: boolean
@@ -531,8 +533,10 @@ restrictions:
     insecure_if_value: false
     insecure_severity: MEDIUM
     insecure_note: >
-      Backups are not forced to be encrypted. If a device is backed up to
-      a computer, backup data may be stored in plaintext.
+      Local backups (Finder/iTunes) are not forced to be encrypted and may be
+      stored in plaintext on the computer. iCloud backups are encrypted by Apple
+      regardless of this setting. Relevant when devices are backed up to
+      computers that may not have full disk encryption.
 
   - key: allowCloudBackup
     type: boolean
@@ -676,12 +680,14 @@ restrictions:
     description: >
       If false, prevents installation of alternative marketplace apps and
       prevents installed alternative marketplace apps from installing apps.
+      EU DMA-only feature — only functional for devices with EU Apple Accounts.
     secure_value: false
     insecure_if_value: true
     insecure_severity: MEDIUM
     insecure_note: >
       Alternative marketplace app installation is permitted, creating an
-      uncontrolled app install vector outside App Store review.
+      app install vector outside App Store review. This is an EU DMA-only
+      feature and does not apply to devices outside the European Union.
 
   - key: allowWebDistributionAppInstallation
     type: boolean
@@ -689,13 +695,16 @@ restrictions:
     supervised: true
     deprecated: false
     category: App Control
-    description: If false, prevents installation of apps directly from the web.
+    description: >
+      If false, prevents installation of apps directly from the web.
+      EU DMA-only feature — only functional for devices with EU Apple Accounts.
     secure_value: false
     insecure_if_value: true
     insecure_severity: MEDIUM
     insecure_note: >
       Apps can be installed directly from websites, bypassing both App Store
-      and MDM app management controls.
+      and MDM app management controls. This is an EU DMA-only feature and
+      does not apply to devices outside the European Union.
 
   - key: allowAppRemoval
     type: boolean
@@ -1222,28 +1231,31 @@ restrictions:
 conflict_rules:
 
   - id: CONF_001
-    description: "App install blocked but alternative install vectors open"
+    description: "App Store blocked but alternative install vectors open"
     severity: HIGH
     note: >
-      allowAppInstallation and/or allowUIAppInstallation is false (blocking App Store
-      installs) but allowMarketplaceAppInstallation or allowWebDistributionAppInstallation
-      is true. This creates alternative uncontrolled installation vectors that bypass
-      the intended app lockdown.
+      allowAppInstallation is false (blocking App Store installs) but
+      allowMarketplaceAppInstallation or allowWebDistributionAppInstallation is true.
+      This creates alternative uncontrolled installation vectors that bypass the
+      intended app lockdown. Note: marketplace and web distribution are currently
+      EU DMA-only features and may not apply outside the European Union.
     conditions:
-      - key: allowMarketplaceAppInstallation
+      - key: allowAppInstallation
         op: eq
-        value: true
-      - key: allowWebDistributionAppInstallation
+        value: false
+      - key: allowMarketplaceAppInstallation
         op: eq
         value: true
 
   - id: CONF_002
     description: "USB host pairing blocked but USB drive access open"
-    severity: HIGH
+    severity: MEDIUM
     note: >
-      allowHostPairing is false (preventing computer pairing) but allowFilesUSBDriveAccess
-      is true (allowing USB storage). Combined with allowUSBRestrictedMode=false, a locked
-      device is exposed to USB-connected storage and accessories without authentication.
+      allowHostPairing is false (preventing computer pairing for sync/backup) but
+      allowFilesUSBDriveAccess is true (allowing USB storage via Files app). The intent
+      to limit USB data transfer is undermined — users can still copy data to external
+      USB drives even though computer pairing is blocked. Consider disabling USB drive
+      access to fully close USB-based data exfiltration.
     conditions:
       - key: allowHostPairing
         op: eq
@@ -1347,11 +1359,13 @@ conflict_rules:
 
   - id: CONF_009
     description: "Profile removal not disallowed (PayloadRemovalDisallowed=false)"
-    severity: CRITICAL
+    severity: LOW
     note: >
-      PayloadRemovalDisallowed is false or absent. The MDM profile itself can be removed
-      by the user without MDM authorization, which would remove ALL restrictions in the
-      profile. Every other restriction is rendered ineffective if this is not set to true.
+      PayloadRemovalDisallowed is false or absent. On iOS and macOS 10.15+, MDM-installed
+      profiles CANNOT be removed by the user regardless of this setting — this key only
+      affects manually-installed profiles. On macOS pre-10.15, users could remove MDM
+      profiles if this was false. Setting to true is still a best practice but the
+      practical impact is limited on modern OS versions with MDM enrollment.
     conditions:
       - key: PayloadRemovalDisallowed
         op: ne

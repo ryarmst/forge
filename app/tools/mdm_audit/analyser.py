@@ -231,7 +231,7 @@ def build_report_html(meta, deprecated, insecure, conflicts, allowed_ids, blocke
 
     removal_warning = ""
     if removal_flag is False or removal_flag is None:
-        removal_warning = '<div style="background:#3b0a0a;border:1px solid #7f1d1d;border-radius:6px;padding:14px 18px;margin:24px 0 0;color:#fca5a5;font-size:13px;line-height:1.5">&#9888;&#65039; <strong>PayloadRemovalDisallowed is false or absent.</strong> This profile can be removed by the user without MDM authorization, rendering all restrictions ineffective.</div>'
+        removal_warning = '<div style="background:#1e2d50;border:1px solid #2a3f6a;border-radius:6px;padding:14px 18px;margin:24px 0 0;color:#93a8d4;font-size:13px;line-height:1.5">&#8505;&#65039; <strong>PayloadRemovalDisallowed is false or absent.</strong> On iOS and macOS 10.15+, MDM-installed profiles cannot be removed by users regardless of this setting. This key only controls removal of manually-installed profiles. Setting to true is still a best practice.</div>'
 
     sev_row_items = "".join(
         f'<span style="font-size:12px;font-family:monospace;padding:2px 8px;border-radius:3px;background:{SEV_COLOUR[s][1]};color:{SEV_COLOUR[s][0]}">{s}: {sev_counts[s]}</span>'
