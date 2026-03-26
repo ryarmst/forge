@@ -1,0 +1,160 @@
+{% extends "tool_base.html" %}
+{% block tool_content %}
+<style>
+  .pg-wrap { display: grid; gap: 1rem; }
+  .pg-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+  }
+  .pg-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text);
+    margin-bottom: 1rem;
+  }
+  .pg-field { display: grid; gap: 0.5rem; margin-bottom: 0.75rem; }
+  .pg-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--font-mono); }
+  .pg-input {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #0f1117;
+    color: var(--text);
+    padding: 0.7rem 0.85rem;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+  }
+  .pg-btn {
+    padding: 0.55rem 0.9rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .pg-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .pg-btn--accent { border-color: var(--accent); color: var(--accent); background: rgba(0,212,170,0.08); }
+  .pg-btn--accent:hover { background: rgba(0,212,170,0.18); }
+  .pg-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .pg-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+  .pg-help { color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; }
+  .pg-error { display: none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.35); border-radius: 8px; padding: 0.75rem 0.85rem; color: var(--danger); margin-top: 0.75rem; }
+</style>
+
+<div class="pg-wrap">
+  <div class="pg-panel">
+    <div class="pg-title">Password Generator</div>
+    <div class="pg-help">
+      Format: <code style="font-family:var(--font-mono);background:#0f1117;border:1px solid var(--border);padding:2px 6px;border-radius:6px;">word$word$worddd</code>
+      where each <code style="font-family:var(--font-mono);">word</code> is a pronounceable/readable modified dictionary word.
+    </div>
+  </div>
+
+  <div class="pg-panel">
+    <div class="pg-title">Generate</div>
+
+    <div class="pg-field">
+      <div class="pg-label">Password</div>
+      <input id="pg-password" class="pg-input" type="text" readonly placeholder="Click Generate to create a password..." />
+    </div>
+
+    <div class="pg-row">
+      <button id="pg-generate" class="pg-btn pg-btn--accent" type="button">Generate</button>
+      <button id="pg-copy" class="pg-btn" type="button" disabled>Copy</button>
+      <button id="pg-new" class="pg-btn" type="button">New</button>
+    </div>
+
+    <div id="pg-error" class="pg-error"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  const elPassword = document.getElementById("pg-password");
+  const elGenerate = document.getElementById("pg-generate");
+  const elCopy = document.getElementById("pg-copy");
+  const elNew = document.getElementById("pg-new");
+  const elError = document.getElementById("pg-error");
+
+  function showError(msg) {
+    elError.textContent = msg;
+    elError.style.display = "block";
+  }
+
+  function clearError() {
+    elError.textContent = "";
+    elError.style.display = "none";
+  }
+
+  function setBusy(busy) {
+    elGenerate.disabled = busy;
+    elNew.disabled = busy;
+    elCopy.disabled = busy;
+  }
+
+  async function copyToClipboard(text) {
+    if (!text) throw new Error("Nothing to copy");
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    // Fallback for older browsers.
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  }
+
+  async function generatePassword() {
+    clearError();
+    setBusy(true);
+
+    try {
+      const resp = await fetch("/tools/password_generator/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ count: 1 })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Request failed");
+      const pwd = data.password;
+      elPassword.value = pwd || "";
+      elCopy.disabled = !pwd;
+    } catch (err) {
+      showError(err && err.message ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  elGenerate.addEventListener("click", generatePassword);
+  elNew.addEventListener("click", generatePassword);
+
+  elCopy.addEventListener("click", async () => {
+    try {
+      await copyToClipboard(elPassword.value);
+      // Soft success feedback.
+      elCopy.textContent = "Copied";
+      setTimeout(() => (elCopy.textContent = "Copy"), 1000);
+    } catch (err) {
+      showError(err && err.message ? err.message : String(err));
+    }
+  });
+
+})();
+</script>
+{% endblock %}
+
