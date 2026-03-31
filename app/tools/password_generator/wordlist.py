@@ -12,7 +12,6 @@ from pathlib import Path
 from app.tools.password_generator import wordlist_rules as rules
 
 _PKG = Path(__file__).resolve().parent
-_RNG = secrets.SystemRandom()
 
 
 def _load_raw_words() -> tuple[str, ...]:
@@ -40,6 +39,20 @@ def _is_vowel(c: str, index: int, word: str) -> bool:
     return False
 
 
+def _pool_for(word_lower: str, index: int, ch: str) -> str:
+    if _is_vowel(ch, index, word_lower):
+        return rules.VOWEL_POOLS.get(ch, rules.VOWEL_DEFAULT)
+    return rules.CONSONANT_POOLS.get(ch, rules.CONSONANT_DEFAULT)
+
+
+def _can_modify(word_lower: str, index: int) -> bool:
+    ch = word_lower[index]
+    if not ch.isalpha():
+        return False
+    pool = _pool_for(word_lower, index, ch)
+    return any(x.lower() != ch for x in pool)
+
+
 def _pick_from_pool(pool: str, original: str) -> str:
     """Random choice; prefer a different letter than ``original`` when possible."""
     o = original.lower()
@@ -51,34 +64,25 @@ def _pick_from_pool(pool: str, original: str) -> str:
 
 def transform_word(word: str) -> str:
     """
-    Replace letters (probabilistically) using vowel/consonant pools from rules.
-
-    Preserves non-letters and case (per-character).
+    Apply exactly one random vowel/consonant-preserving substitution (if any
+    position can change), then capitalize the first letter.
     """
-    v_chance = float(getattr(rules, "VOWEL_REPLACE_CHANCE", 1.0))
-    c_chance = float(getattr(rules, "CONSONANT_REPLACE_CHANCE", 1.0))
-    v_chance = max(0.0, min(1.0, v_chance))
-    c_chance = max(0.0, min(1.0, c_chance))
+    raw = word.strip()
+    if not raw:
+        return raw
 
-    out: list[str] = []
-    for i, c in enumerate(word):
-        if not c.isalpha():
-            out.append(c)
-            continue
-        lower = c.lower()
-        if _is_vowel(lower, i, word):
-            if _RNG.random() >= v_chance:
-                repl = lower
-            else:
-                pool = rules.VOWEL_POOLS.get(lower, rules.VOWEL_DEFAULT)
-                repl = _pick_from_pool(pool, lower)
-        else:
-            if _RNG.random() >= c_chance:
-                repl = lower
-            else:
-                pool = rules.CONSONANT_POOLS.get(lower, rules.CONSONANT_DEFAULT)
-                repl = _pick_from_pool(pool, lower)
-        if c.isupper():
-            repl = repl.upper()
-        out.append(repl)
-    return "".join(out)
+    lower_full = raw.lower()
+    modifiable = [
+        i
+        for i, c in enumerate(lower_full)
+        if c.isalpha() and _can_modify(lower_full, i)
+    ]
+    chars = list(lower_full)
+    if modifiable:
+        idx = secrets.choice(modifiable)
+        ch = chars[idx]
+        pool = _pool_for(lower_full, idx, ch)
+        chars[idx] = _pick_from_pool(pool, ch)
+
+    body = "".join(chars)
+    return body[0].upper() + body[1:] if body else body

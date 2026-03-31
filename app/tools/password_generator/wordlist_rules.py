@@ -13,18 +13,10 @@ Why outputs used to look like ``qfomnuwz``:
   * ``CONSONANT_DEFAULT`` included ``q``, ``x``, ``z``, so any unmapped letter
     could become those.
 
-``VOWEL_REPLACE_CHANCE`` / ``CONSONANT_REPLACE_CHANCE`` leave some letters
-unchanged so the word stays closer to a real skeleton — tweak for more “goofy”
-vs more readable.
+One letter per word is substituted at random (see ``wordlist.transform_word``).
 """
 
 from __future__ import annotations
-
-# ---------------------------------------------------------------------------
-# How often to actually substitute (0–1). Lower = closer to the base word.
-# ---------------------------------------------------------------------------
-VOWEL_REPLACE_CHANCE: float = 0.72
-CONSONANT_REPLACE_CHANCE: float = 0.52
 
 # ---------------------------------------------------------------------------
 # Vowel pools (vowels only)
