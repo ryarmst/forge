@@ -62,27 +62,63 @@ def _pick_from_pool(pool: str, original: str) -> str:
     return secrets.choice(pool)
 
 
+def _digraph_starts(word_lower: str) -> list[int]:
+    """Start indices where ``word_lower[i : i + 2]`` is a known digraph."""
+    pools = getattr(rules, "CONSONANT_DIGRAPH_POOLS", None) or {}
+    n = len(word_lower)
+    out: list[int] = []
+    for i in range(n - 1):
+        pair = word_lower[i : i + 2]
+        pool = pools.get(pair)
+        if not pool:
+            continue
+        a, b = pair[0], pair[1]
+        if not (a.isalpha() and b.isalpha()):
+            continue
+        if all(len(c) == 1 and c.isalpha() for c in pool):
+            out.append(i)
+    return out
+
+
+def _apply_digraph(word_lower: str, start: int) -> str:
+    pools = getattr(rules, "CONSONANT_DIGRAPH_POOLS", None) or {}
+    pair = word_lower[start : start + 2]
+    repl = secrets.choice(pools[pair])
+    return word_lower[:start] + repl + word_lower[start + 2 :]
+
+
 def transform_word(word: str) -> str:
     """
-    Apply exactly one random vowel/consonant-preserving substitution (if any
-    position can change), then capitalize the first letter.
+    Apply exactly one random change (if possible): either a single-letter
+    vowel/consonant swap, or collapsing a consonant digraph to one letter,
+    then capitalize the first letter.
     """
     raw = word.strip()
     if not raw:
         return raw
 
     lower_full = raw.lower()
-    modifiable = [
+    single_idxs = [
         i
         for i, c in enumerate(lower_full)
         if c.isalpha() and _can_modify(lower_full, i)
     ]
-    chars = list(lower_full)
-    if modifiable:
-        idx = secrets.choice(modifiable)
-        ch = chars[idx]
-        pool = _pool_for(lower_full, idx, ch)
-        chars[idx] = _pick_from_pool(pool, ch)
+    digraph_idxs = _digraph_starts(lower_full)
 
-    body = "".join(chars)
+    options: list[tuple[str, int]] = [("single", i) for i in single_idxs]
+    options.extend(("digraph", i) for i in digraph_idxs)
+
+    if options:
+        kind, idx = secrets.choice(options)
+        if kind == "digraph":
+            body = _apply_digraph(lower_full, idx)
+        else:
+            chars = list(lower_full)
+            ch = chars[idx]
+            pool = _pool_for(lower_full, idx, ch)
+            chars[idx] = _pick_from_pool(pool, ch)
+            body = "".join(chars)
+    else:
+        body = lower_full
+
     return body[0].upper() + body[1:] if body else body

@@ -5,15 +5,9 @@ Each character is replaced with another character of the same class:
   - vowels → only from that letter's vowel pool
   - consonants → only from that letter's consonant pool
 
-Why outputs used to look like ``qfomnuwz``:
-  * Every letter was swapped independently, so syllable shape was destroyed.
-  * Pools such as ``ckq`` and ``sz`` inject ``q`` and ``z`` at high rates when
-    ``c``/``k``/``s`` are common.
-  * ``lrw`` / ``rwl`` inject ``w`` in places English rarely uses it.
-  * ``CONSONANT_DEFAULT`` included ``q``, ``x``, ``z``, so any unmapped letter
-    could become those.
-
-One letter per word is substituted at random (see ``wordlist.transform_word``).
+Exactly one change per word (see ``wordlist.transform_word``): either a single
+letter swap (vowel/consonant pools above) **or** collapsing a consonant digraph
+(two letters, one combined sound) into **one** consonant from the digraph pool.
 """
 
 from __future__ import annotations
@@ -62,4 +56,28 @@ CONSONANT_POOLS: dict[str, str] = {
     "x": "ks",
     "z": "st",
     "y": "hj",
+}
+
+# ---------------------------------------------------------------------------
+# Consonant digraphs → one replacement consonant (string = pool of choices).
+# Only two-letter keys; each replacement must be a single lowercase letter.
+# Edit freely: add pairs (e.g. "ll" → "l" is optional) or narrow pools.
+# ---------------------------------------------------------------------------
+CONSONANT_DIGRAPH_POOLS: dict[str, str] = {
+    "sh": "szc",
+    "ch": "cktj",
+    "th": "td",
+    "ph": "fv",
+    "wh": "hw",
+    "ck": "kc",
+    "ng": "nm",
+    "kn": "nk",
+    "wr": "rw",
+    "mb": "m",
+    "dg": "jd",
+    "qu": "kw",
+    "sc": "skc",
+    "gh": "fg",
+    "rh": "r",
+    "ps": "spt",
 }
