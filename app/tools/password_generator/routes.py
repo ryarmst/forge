@@ -10,16 +10,16 @@ import secrets
 
 from flask import Blueprint, jsonify, request
 
-from app.tools.password_generator.wordlist_mod import MODIFIED_WORDS
+from app.tools.password_generator.wordlist import RAW_WORDS, transform_word
 
 blueprint = Blueprint("password_generator", __name__)
 
 
 def _generate_one_password() -> str:
-    # Use cryptographically-strong randomness.
-    w1 = secrets.choice(MODIFIED_WORDS)
-    w2 = secrets.choice(MODIFIED_WORDS)
-    w3 = secrets.choice(MODIFIED_WORDS)
+    # Use cryptographically-strong randomness; transforms applied at runtime.
+    w1 = transform_word(secrets.choice(RAW_WORDS))
+    w2 = transform_word(secrets.choice(RAW_WORDS))
+    w3 = transform_word(secrets.choice(RAW_WORDS))
     d1 = secrets.randbelow(10)
     d2 = secrets.randbelow(10)
     return f"{w1}${w2}${w3}{d1}{d2}"
