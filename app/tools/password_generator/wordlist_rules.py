@@ -2,17 +2,32 @@
 Editable substitution rules for pronounceable password fragments.
 
 Each character is replaced with another character of the same class:
-  - vowels (a, e, i, o, u, and vowel-like y) → only from that letter's vowel pool
+  - vowels → only from that letter's vowel pool
   - consonants → only from that letter's consonant pool
 
-Edit the pools below to bias toward certain sounds. Each character in a pool is
-equally likely unless you change selection logic in ``wordlist.transform_word``.
+Why outputs used to look like ``qfomnuwz``:
+  * Every letter was swapped independently, so syllable shape was destroyed.
+  * Pools such as ``ckq`` and ``sz`` inject ``q`` and ``z`` at high rates when
+    ``c``/``k``/``s`` are common.
+  * ``lrw`` / ``rwl`` inject ``w`` in places English rarely uses it.
+  * ``CONSONANT_DEFAULT`` included ``q``, ``x``, ``z``, so any unmapped letter
+    could become those.
+
+``VOWEL_REPLACE_CHANCE`` / ``CONSONANT_REPLACE_CHANCE`` leave some letters
+unchanged so the word stays closer to a real skeleton — tweak for more “goofy”
+vs more readable.
 """
 
 from __future__ import annotations
 
 # ---------------------------------------------------------------------------
-# Vowel pools (only vowels; pronounceability preserved by staying in vowel space)
+# How often to actually substitute (0–1). Lower = closer to the base word.
+# ---------------------------------------------------------------------------
+VOWEL_REPLACE_CHANCE: float = 0.72
+CONSONANT_REPLACE_CHANCE: float = 0.52
+
+# ---------------------------------------------------------------------------
+# Vowel pools (vowels only)
 # ---------------------------------------------------------------------------
 VOWEL_DEFAULT = "aeiou"
 
@@ -22,37 +37,37 @@ VOWEL_POOLS: dict[str, str] = {
     "i": "aeiou",
     "o": "aeiou",
     "u": "aeiou",
-    # y when it acts as a vowel (see wordlist._is_vowel)
     "y": "aeiouy",
 }
 
 # ---------------------------------------------------------------------------
-# Consonant pools — phonetically similar groups where possible; edit freely.
-# Keys must cover consonants; unknown letters fall back to CONSONANT_DEFAULT.
+# Consonant pools — favor letters that fit English-like chunks; no ``q`` in
+# ``c``/``k`` pools, no ``z`` in ``s`` pool, etc. Rare letters only map to
+# mild alternates.
 # ---------------------------------------------------------------------------
-CONSONANT_DEFAULT = "bcdfghjklmnpqrstvwxyz"
+# Fallback when a letter has no entry (should not happen for a–z).
+CONSONANT_DEFAULT = "bcdfghjklmnprstv"
 
 CONSONANT_POOLS: dict[str, str] = {
     "b": "bpm",
-    "c": "ckq",
+    "c": "ck",
     "d": "dtn",
-    "f": "fvh",
-    "g": "gjk",
+    "f": "fv",
+    "g": "gk",
     "h": "hf",
     "j": "jg",
-    "k": "ckq",
-    "l": "lrw",
+    "k": "ck",
+    "l": "lr",
     "m": "mn",
     "n": "mnt",
     "p": "bpm",
-    "q": "ckq",
-    "r": "rwl",
-    "s": "sz",
+    "q": "ckw",
+    "r": "lr",
+    "s": "st",
     "t": "dtn",
-    "v": "vfw",
-    "w": "wlr",
-    "x": "xksz",
-    "z": "zjs",
-    # y when word-initial (consonantal), e.g. "yes"
-    "y": "yhj",
+    "v": "fv",
+    "w": "lr",
+    "x": "ks",
+    "z": "st",
+    "y": "hj",
 }

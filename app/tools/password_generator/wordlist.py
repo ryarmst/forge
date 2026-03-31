@@ -12,6 +12,7 @@ from pathlib import Path
 from app.tools.password_generator import wordlist_rules as rules
 
 _PKG = Path(__file__).resolve().parent
+_RNG = secrets.SystemRandom()
 
 
 def _load_raw_words() -> tuple[str, ...]:
@@ -50,10 +51,15 @@ def _pick_from_pool(pool: str, original: str) -> str:
 
 def transform_word(word: str) -> str:
     """
-    Replace each letter with a random letter from the same vowel/consonant pool.
+    Replace letters (probabilistically) using vowel/consonant pools from rules.
 
     Preserves non-letters and case (per-character).
     """
+    v_chance = float(getattr(rules, "VOWEL_REPLACE_CHANCE", 1.0))
+    c_chance = float(getattr(rules, "CONSONANT_REPLACE_CHANCE", 1.0))
+    v_chance = max(0.0, min(1.0, v_chance))
+    c_chance = max(0.0, min(1.0, c_chance))
+
     out: list[str] = []
     for i, c in enumerate(word):
         if not c.isalpha():
@@ -61,11 +67,17 @@ def transform_word(word: str) -> str:
             continue
         lower = c.lower()
         if _is_vowel(lower, i, word):
-            pool = rules.VOWEL_POOLS.get(lower, rules.VOWEL_DEFAULT)
-            repl = _pick_from_pool(pool, lower)
+            if _RNG.random() >= v_chance:
+                repl = lower
+            else:
+                pool = rules.VOWEL_POOLS.get(lower, rules.VOWEL_DEFAULT)
+                repl = _pick_from_pool(pool, lower)
         else:
-            pool = rules.CONSONANT_POOLS.get(lower, rules.CONSONANT_DEFAULT)
-            repl = _pick_from_pool(pool, lower)
+            if _RNG.random() >= c_chance:
+                repl = lower
+            else:
+                pool = rules.CONSONANT_POOLS.get(lower, rules.CONSONANT_DEFAULT)
+                repl = _pick_from_pool(pool, lower)
         if c.isupper():
             repl = repl.upper()
         out.append(repl)
