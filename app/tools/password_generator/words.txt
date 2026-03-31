@@ -1,5 +1,3 @@
-# google-10000-english-usa.txt — words 4–9 chars, lowercase, unique
-# https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-usa.txt
 that
 this
 with
