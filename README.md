@@ -99,7 +99,7 @@ scp ca/ca.crt root@<VPS_IP>:~/forge/certs/
 **User setup:**
 
 1. Import the `.p12` file into their browser (Settings > Certificates > Your Certificates)
-2. Access `https://westminsteroffensive.ca`
+2. Access `https://<domain>`
 3. Browser prompts to select the client cert — done
 
 **To grant a new user access:** Run `create-client-cert.sh` with their name, send them the `.p12` file.
