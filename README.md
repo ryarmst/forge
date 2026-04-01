@@ -9,6 +9,30 @@ pip install -r requirements.txt
 python3 run.py                    # http://localhost:5000
 ```
 
+## Local Docker
+
+Run the app in a container with the same image the `Dockerfile` builds for production (Gunicorn on port 5000). Requires [Docker](https://docs.docker.com/get-docker/) with Compose v2.
+
+From the repository root:
+
+```bash
+docker compose up --build
+```
+
+Open **http://localhost:5000**. The compose file maps host `5000` to the app and sets `FLASK_ENV=production`.
+
+Useful variants:
+
+```bash
+docker compose up --build -d    # detached (background)
+docker compose down             # stop and remove containers
+docker compose build --no-cache # rebuild image from scratch
+```
+
+After you change application code, rebuild or run `docker compose up --build` again so the image picks up the new files.
+
+For day-to-day development with Flask’s debug reloader, prefer **Quick Start (Local Dev)** above. Use Docker when you want to verify the containerized stack without installing Python dependencies on the host.
+
 ## Production Deployment
 
 Forge deploys automatically via GitHub Actions on push to `main`. The pipeline builds a Docker image, pushes it to GHCR, then SSHs into the VPS to pull and restart.
@@ -150,6 +174,6 @@ forge/
 │   └── mtls/                # CA and cert generation scripts
 ├── .github/workflows/       # CI/CD pipeline
 ├── Dockerfile               # python:3.12-slim + gunicorn
-├── docker-compose.yml       # Local dev
+├── docker-compose.yml       # Local Docker (Forge on :5000)
 └── docker-compose.prod.yml  # Production (Caddy + Forge)
 ```
